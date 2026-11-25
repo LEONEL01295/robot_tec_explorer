@@ -48,41 +48,44 @@ class _ControlScreenState extends State<ControlScreen> {
   }
 
   void _handleGamepadEvent(GamepadEvent event) {
-    // Check D-Pad, Analog Stick X/Y, or ABXY button events
     final key = event.key.toLowerCase();
-    final value = event.value;
+    final double rawVal = event.value.toDouble();
+    // Normalize value if range is -32768..32767
+    final double value = (rawVal.abs() > 1.0) ? (rawVal / 32768.0) : rawVal;
+
+    debugPrint("RAW GAMEPAD EVENT: key=$key, rawVal=$rawVal, val=$value");
 
     String targetCmd = "detener";
 
-    // Analog Stick Y Axis or D-Pad Vertical
-    if (key.contains("y") || key.contains("vertical") || key.contains("dpad_up") || key.contains("dpad_down")) {
-      if (value < -0.3) {
+    // Axis 1 / Y-axis / Vertical Stick / D-Pad Up/Down
+    if (key.contains("y") || key.contains("vertical") || key == "axis-1" || key == "axis-3" || key.contains("dpad_up") || key.contains("dpad_down") || key.contains("hat_y")) {
+      if (value < -0.25) {
         targetCmd = "adelante";
-      } else if (value > 0.3) {
+      } else if (value > 0.25) {
         targetCmd = "atras";
       } else {
         targetCmd = "detener";
       }
     }
-    // Analog Stick X Axis or D-Pad Horizontal
-    else if (key.contains("x") || key.contains("horizontal") || key.contains("dpad_left") || key.contains("dpad_right")) {
-      if (value < -0.3) {
+    // Axis 0 / X-axis / Horizontal Stick / D-Pad Left/Right
+    else if (key.contains("x") || key.contains("horizontal") || key == "axis-0" || key == "axis-2" || key.contains("dpad_left") || key.contains("dpad_right") || key.contains("hat_x")) {
+      if (value < -0.25) {
         targetCmd = "izquierda";
-      } else if (value > 0.3) {
+      } else if (value > 0.25) {
         targetCmd = "derecha";
       } else {
         targetCmd = "detener";
       }
     }
-    // Buttons (A, B, X, Y, Triggers)
+    // Buttons (A, B, X, Y or button-0, button-1, button-2, button-3)
     else if (value > 0.5) {
-      if (key.contains("a") || key.contains("south")) {
+      if (key == "button-0" || key.contains("a") || key.contains("south")) {
         targetCmd = "adelante";
-      } else if (key.contains("b") || key.contains("east")) {
+      } else if (key == "button-1" || key.contains("b") || key.contains("east")) {
         targetCmd = "atras";
-      } else if (key.contains("x") || key.contains("west")) {
+      } else if (key == "button-2" || key.contains("x") || key.contains("west")) {
         targetCmd = "izquierda";
-      } else if (key.contains("y") || key.contains("north")) {
+      } else if (key == "button-3" || key.contains("y") || key.contains("north")) {
         targetCmd = "derecha";
       } else if (key.contains("stop") || key.contains("brake") || key.contains("trigger")) {
         targetCmd = "detener";
@@ -110,28 +113,28 @@ class _ControlScreenState extends State<ControlScreen> {
     if (isKeyDown) {
       if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.keyW) {
         RobotBluetoothService.instance.sendCommand("adelante");
-        _onCommandSent("⌨️ adelante");
+        _onCommandSent("🎮 adelante");
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
         RobotBluetoothService.instance.sendCommand("atras");
-        _onCommandSent("⌨️ atras");
+        _onCommandSent("🎮 atras");
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA) {
         RobotBluetoothService.instance.sendCommand("izquierda");
-        _onCommandSent("⌨️ izquierda");
+        _onCommandSent("🎮 izquierda");
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD) {
         RobotBluetoothService.instance.sendCommand("derecha");
-        _onCommandSent("⌨️ derecha");
+        _onCommandSent("🎮 derecha");
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.space) {
         RobotBluetoothService.instance.sendCommand("detener");
-        _onCommandSent("⌨️ detener");
+        _onCommandSent("🎮 detener");
         return KeyEventResult.handled;
       }
     } else if (event is KeyUpEvent) {
       RobotBluetoothService.instance.sendCommand("detener");
-      _onCommandSent("⌨️ detener");
+      _onCommandSent("🎮 detener");
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
