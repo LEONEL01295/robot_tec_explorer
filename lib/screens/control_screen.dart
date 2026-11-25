@@ -32,11 +32,15 @@ class _ControlScreenState extends State<ControlScreen> {
   void _initGamepadListener() {
     try {
       _gamepadSubscription = Gamepads.events.listen((event) {
-        setState(() {
-          _gamepadConnected = true;
-          _activeGamepadName = "GameSir / Xbox Controller (${event.gamepadId})";
-        });
-        _handleGamepadEvent(event);
+        if (mounted) {
+          setState(() {
+            _gamepadConnected = true;
+            _activeGamepadName = "GameSir / Xbox (${event.gamepadId})";
+          });
+          _handleGamepadEvent(event);
+        }
+      }, onError: (e) {
+        debugPrint("Gamepad event error: $e");
       });
     } catch (e) {
       debugPrint("Error initializing Gamepad listener: $e");
