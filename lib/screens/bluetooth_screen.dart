@@ -80,6 +80,8 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                       child: Text(
                         "Buscando objetivo BLE: ${RobotBluetoothService.targetDeviceName}\nUUID: ${RobotBluetoothService.targetServiceUuidStr}",
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.87), fontSize: 11),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -99,7 +101,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                   child: Row(
                     children: [
                       const Icon(Icons.bluetooth_connected, color: Color(0xFF10B981), size: 36),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,27 +113,31 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 15,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               connectedDevice.remoteId.str,
-                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              style: const TextStyle(color: Colors.white54, fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               "RSSI: ${ble.rssi} dBm",
-                              style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () => ble.disconnectDevice(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFEF4444),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text("DESCONECTAR", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                        child: const Text("DESCONECTAR", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -139,22 +145,26 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
 
               // Section Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "DISPOSITIVOS DISPONIBLES",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        "DISPOSITIVOS DISPONIBLES",
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          letterSpacing: 0.8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       "${results.length} detectados",
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11),
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -164,31 +174,34 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
               Expanded(
                 child: results.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.bluetooth_searching,
-                              color: Colors.white24,
-                              size: 64,
-                            ).animate(onPlay: (c) => c.repeat(reverse: true))
-                             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1000.ms),
-                            const SizedBox(height: 16),
-                            const Text(
-                              "Buscando TANQUE-ESP32...",
-                              style: TextStyle(color: Colors.white60, fontSize: 14),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              "Asegúrate de que el ESP32 esté encendido con BLE activo",
-                              style: TextStyle(color: Colors.white38, fontSize: 11),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.bluetooth_searching,
+                                color: Colors.white24,
+                                size: 64,
+                              ).animate(onPlay: (c) => c.repeat(reverse: true))
+                               .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1000.ms),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "Buscando TANQUE-ESP32...",
+                                style: TextStyle(color: Colors.white60, fontSize: 14),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                "Asegúrate de que el ESP32 esté encendido con BLE activo",
+                                style: TextStyle(color: Colors.white38, fontSize: 11),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: results.length,
                         itemBuilder: (context, index) {
                           final result = results[index];
@@ -209,63 +222,81 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               ),
                             ),
                             margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isTarget ? const Color(0xFF06B6D4).withValues(alpha: 0.2) : Colors.white10,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  isTarget ? Icons.directions_car : Icons.bluetooth,
-                                  color: isTarget ? const Color(0xFF38BDF8) : Colors.white54,
-                                ),
-                              ),
-                              title: Text(
-                                name,
-                                style: TextStyle(
-                                  color: isTarget ? Colors.white : Colors.white.withValues(alpha: 0.87),
-                                  fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Text(
-                                "${device.remoteId.str} • RSSI: ${result.rssi} dBm",
-                                style: const TextStyle(color: Colors.white38, fontSize: 11),
-                              ),
-                              trailing: isThisConnected
-                                  ? const Icon(Icons.check_circle, color: Color(0xFF10B981))
-                                  : isConnecting
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06B6D4)),
-                                        )
-                                      : ElevatedButton(
-                                          onPressed: () async {
-                                            bool success = await ble.connectDevice(device);
-                                            if (success && context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text("Conectado exitosamente a $name"),
-                                                  backgroundColor: const Color(0xFF10B981),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: isTarget ? const Color(0xFF06B6D4) : const Color(0xFF334155),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isTarget ? const Color(0xFF06B6D4).withValues(alpha: 0.2) : Colors.white10,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isTarget ? Icons.directions_car : Icons.bluetooth,
+                                      color: isTarget ? const Color(0xFF38BDF8) : Colors.white54,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: TextStyle(
+                                            color: isTarget ? Colors.white : Colors.white.withValues(alpha: 0.87),
+                                            fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
+                                            fontSize: 13,
                                           ),
-                                          child: Text(
-                                            "CONECTAR",
-                                            style: TextStyle(
-                                              color: isTarget ? Colors.black : Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                            ),
-                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                        Text(
+                                          "${device.remoteId.str} • ${result.rssi} dBm",
+                                          style: const TextStyle(color: Colors.white38, fontSize: 10),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  isThisConnected
+                                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24)
+                                      : isConnecting
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06B6D4)),
+                                            )
+                                          : ElevatedButton(
+                                              onPressed: () async {
+                                                bool success = await ble.connectDevice(device);
+                                                if (success && context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text("Conectado exitosamente a $name"),
+                                                      backgroundColor: const Color(0xFF10B981),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: isTarget ? const Color(0xFF06B6D4) : const Color(0xFF334155),
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                              child: Text(
+                                                "CONECTAR",
+                                                style: TextStyle(
+                                                  color: isTarget ? Colors.black : Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ),
+                                ],
+                              ),
                             ),
                           );
                         },

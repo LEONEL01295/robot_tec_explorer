@@ -43,61 +43,68 @@ class RobotStatusWidget extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ],
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true))
+                         .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 1000.ms),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isConnected ? "CONECTADO" : "DESCONECTADO",
+                                style: TextStyle(
+                                  color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  letterSpacing: 1.0,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                RobotBluetoothService.targetDeviceName,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      ).animate(onPlay: (c) => c.repeat(reverse: true))
-                       .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 1000.ms),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isConnected ? "CONECTADO" : "DESCONECTADO",
-                            style: TextStyle(
-                              color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Text(
-                            RobotBluetoothService.targetDeviceName,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
                     children: [
                       Icon(
                         Icons.wifi_tethering,
                         color: isConnected ? const Color(0xFF06B6D4) : Colors.white38,
-                        size: 20,
+                        size: 18,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isConnected ? "$rssi dBm" : "N/A",
                         style: const TextStyle(
                           color: Colors.white70,
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -112,8 +119,9 @@ class RobotStatusWidget extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildCommandBadge("ESTADO ACTUAL", command.toUpperCase(), _getCommandColor(command)),
-                  _buildMotorBadge(command),
+                  Flexible(child: _buildCommandBadge("ESTADO ACTUAL", command.toUpperCase(), _getCommandColor(command))),
+                  const SizedBox(width: 8),
+                  Flexible(child: _buildMotorBadge(command)),
                 ],
               ),
             ],
@@ -134,10 +142,11 @@ class RobotStatusWidget extends StatelessWidget {
             letterSpacing: 1,
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
@@ -148,9 +157,10 @@ class RobotStatusWidget extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,
-              fontSize: 14,
-              letterSpacing: 1.1,
+              fontSize: 13,
+              letterSpacing: 1.0,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -174,10 +184,11 @@ class RobotStatusWidget extends StatelessWidget {
             letterSpacing: 1,
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
@@ -188,8 +199,9 @@ class RobotStatusWidget extends StatelessWidget {
             style: const TextStyle(
               color: Color(0xFF60A5FA),
               fontWeight: FontWeight.bold,
-              fontSize: 12,
+              fontSize: 11,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
