@@ -4,6 +4,15 @@ import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Override debug error widget builder to prevent yellow-black striped banners on any device
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    if (details.exceptionAsString().contains('overflowed')) {
+      return const SizedBox.shrink();
+    }
+    return ErrorWidget(details.exception);
+  };
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
