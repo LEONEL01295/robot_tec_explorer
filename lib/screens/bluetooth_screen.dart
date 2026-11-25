@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:win_ble/win_ble.dart';
 import '../services/bluetooth_service.dart';
 
 class BluetoothScreen extends StatefulWidget {
@@ -10,6 +12,8 @@ class BluetoothScreen extends StatefulWidget {
 }
 
 class _BluetoothScreenState extends State<BluetoothScreen> {
+  bool get _isWindows => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
   @override
   void initState() {
     super.initState();
@@ -63,9 +67,12 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
           final ble = RobotBluetoothService.instance;
           final isConnected = ble.isConnected;
           final isConnecting = ble.isConnecting;
-          final results = ble.scanResults;
+          final androidResults = ble.scanResults;
+          final winResults = ble.windowsDevices;
           final connectedDevice = ble.connectedDevice;
           final isVirtualMode = ble.isVirtualMode;
+
+          final totalCount = _isWindows ? winResults.length : androidResults.length;
 
           return Column(
             children: [
@@ -161,7 +168,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "DISPOSITIVOS DISPONIBLES",
+                          _isWindows ? "DISPOSITIVOS BLUETOOTH (WINDOWS)" : "DISPOSITIVOS DISPONIBLES (ANDROID)",
                           style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 10,
@@ -172,7 +179,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      "${results.length} detectados",
+                      "$totalCount detectados",
                       style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -181,7 +188,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
 
               // Devices List
               Expanded(
-                child: results.isEmpty
+                child: totalCount == 0
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(20.0),
@@ -201,7 +208,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                "En móviles usa Bluetooth y GPS. En Windows usa el botón de abajo:",
+                                "Asegúrate de encender el Bluetooth en tu computadora/móvil.",
                                 style: TextStyle(color: Colors.white38, fontSize: 10),
                                 textAlign: TextAlign.center,
                               ),
@@ -231,116 +238,225 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                           ),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        itemCount: results.length,
-                        itemBuilder: (context, index) {
-                          final result = results[index];
-                          final device = result.device;
-                          final name = device.platformName.isNotEmpty ? device.platformName : "Dispositivo Desconocido";
-                          final isTarget = name.toUpperCase().contains("TANQUE") || name.toUpperCase().contains("ESP32");
-                          final isThisConnected = connectedDevice?.remoteId == device.remoteId;
-
-                          return Card(
-                            color: isTarget
-                                ? const Color(0xFF0F172A).withValues(alpha: 0.9)
-                                : const Color(0xFF1E293B).withValues(alpha: 0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
-                                color: isTarget ? const Color(0xFF06B6D4) : Colors.white10,
-                                width: isTarget ? 1.5 : 1,
-                              ),
-                            ),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: isTarget ? const Color(0xFF06B6D4).withValues(alpha: 0.2) : Colors.white10,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      isTarget ? Icons.directions_car : Icons.bluetooth,
-                                      color: isTarget ? const Color(0xFF38BDF8) : Colors.white54,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: TextStyle(
-                                            color: isTarget ? Colors.white : Colors.white.withValues(alpha: 0.87),
-                                            fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
-                                            fontSize: 12,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                        Text(
-                                          "${device.remoteId.str} • ${result.rssi} dBm",
-                                          style: const TextStyle(color: Colors.white38, fontSize: 10),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  isThisConnected
-                                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
-                                      : isConnecting
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06B6D4)),
-                                            )
-                                          : ElevatedButton(
-                                              onPressed: () async {
-                                                bool success = await ble.connectDevice(device);
-                                                if (success && context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text("Conectado exitosamente a $name"),
-                                                      backgroundColor: const Color(0xFF10B981),
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: isTarget ? const Color(0xFF06B6D4) : const Color(0xFF334155),
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              ),
-                                              child: Text(
-                                                "CONECTAR",
-                                                style: TextStyle(
-                                                  color: isTarget ? Colors.black : Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 9,
-                                                ),
-                                              ),
-                                            ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    : _isWindows
+                        ? _buildWindowsList(ble, winResults)
+                        : _buildAndroidList(ble, androidResults, connectedDevice, isConnecting),
               ),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildWindowsList(RobotBluetoothService ble, List<BleDevice> devices) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      itemCount: devices.length,
+      itemBuilder: (context, index) {
+        final device = devices[index];
+        final name = device.name.isNotEmpty ? device.name : "Dispositivo Bluetooth (${device.address})";
+        final isTarget = name.toUpperCase().contains("TANQUE") || name.toUpperCase().contains("ESP32");
+
+        return Card(
+          color: isTarget
+              ? const Color(0xFF0F172A).withValues(alpha: 0.9)
+              : const Color(0xFF1E293B).withValues(alpha: 0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: isTarget ? const Color(0xFF06B6D4) : Colors.white10,
+              width: isTarget ? 1.5 : 1,
+            ),
+          ),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isTarget ? const Color(0xFF06B6D4).withValues(alpha: 0.2) : Colors.white10,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isTarget ? Icons.directions_car : Icons.bluetooth,
+                    color: isTarget ? const Color(0xFF38BDF8) : Colors.white54,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: isTarget ? Colors.white : Colors.white.withValues(alpha: 0.87),
+                          fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      Text(
+                        "${device.address} • ${device.rssi} dBm",
+                        style: const TextStyle(color: Colors.white38, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  onPressed: () async {
+                    bool success = await ble.connectWinDevice(device);
+                    if (success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Conectado en Windows a $name"),
+                          backgroundColor: const Color(0xFF10B981),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isTarget ? const Color(0xFF06B6D4) : const Color(0xFF334155),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(
+                    "CONECTAR",
+                    style: TextStyle(
+                      color: isTarget ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAndroidList(
+    RobotBluetoothService ble,
+    List<dynamic> results,
+    dynamic connectedDevice,
+    bool isConnecting,
+  ) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final result = results[index];
+        final device = result.device;
+        final name = device.platformName.isNotEmpty ? device.platformName : "Dispositivo Desconocido";
+        final isTarget = name.toUpperCase().contains("TANQUE") || name.toUpperCase().contains("ESP32");
+        final isThisConnected = connectedDevice?.remoteId == device.remoteId;
+
+        return Card(
+          color: isTarget
+              ? const Color(0xFF0F172A).withValues(alpha: 0.9)
+              : const Color(0xFF1E293B).withValues(alpha: 0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: isTarget ? const Color(0xFF06B6D4) : Colors.white10,
+              width: isTarget ? 1.5 : 1,
+            ),
+          ),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isTarget ? const Color(0xFF06B6D4).withValues(alpha: 0.2) : Colors.white10,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isTarget ? Icons.directions_car : Icons.bluetooth,
+                    color: isTarget ? const Color(0xFF38BDF8) : Colors.white54,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: isTarget ? Colors.white : Colors.white.withValues(alpha: 0.87),
+                          fontWeight: isTarget ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      Text(
+                        "${device.remoteId.str} • ${result.rssi} dBm",
+                        style: const TextStyle(color: Colors.white38, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                isThisConnected
+                    ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
+                    : isConnecting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06B6D4)),
+                          )
+                        : ElevatedButton(
+                            onPressed: () async {
+                              bool success = await ble.connectDevice(device);
+                              if (success && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Conectado exitosamente a $name"),
+                                    backgroundColor: const Color(0xFF10B981),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isTarget ? const Color(0xFF06B6D4) : const Color(0xFF334155),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: Text(
+                              "CONECTAR",
+                              style: TextStyle(
+                                color: isTarget ? Colors.black : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

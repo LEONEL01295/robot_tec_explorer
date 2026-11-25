@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:win_ble/win_ble.dart';
 
 class RobotBluetoothService extends ChangeNotifier {
   static final RobotBluetoothService instance = RobotBluetoothService._internal();
@@ -11,13 +12,16 @@ class RobotBluetoothService extends ChangeNotifier {
   }
 
   RobotBluetoothService._internal() {
-    _initListeners();
+    _initService();
   }
 
   // BLE Constants
   static const String targetDeviceName = "TANQUE-ESP32";
   static const String targetServiceUuidStr = "12345678-1234-5678-1234-56789abcdef0";
   static const String targetCharacteristicUuidStr = "abcdef01-1234-5678-1234-56789abcdef0";
+
+  // Platform Check
+  bool get _isWindows => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
   // State
   bool _isScanning = false;
@@ -27,13 +31,18 @@ class RobotBluetoothService extends ChangeNotifier {
   int _rssi = -55;
   String _currentCommand = "detener";
 
+  // Devices & Connections
   List<ScanResult> _scanResults = [];
-  BluetoothDevice? _connectedDevice;
-  BluetoothCharacteristic? _targetCharacteristic;
+  final List<BleDevice> _windowsDevices = [];
+  BluetoothDevice? _connectedDevice; // Android
+  String? _connectedWinAddress; // Windows
+  BluetoothCharacteristic? _targetCharacteristic; // Android
 
+  // Subscriptions
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<bool>? _isScanningSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
+  StreamSubscription<BleDevice>? _winScanSubscription;
   Timer? _rssiTimer;
 
   // Getters
@@ -44,43 +53,79 @@ class RobotBluetoothService extends ChangeNotifier {
   int get rssi => _rssi;
   String get currentCommand => _currentCommand;
   List<ScanResult> get scanResults => _scanResults;
+  List<BleDevice> get windowsDevices => _windowsDevices;
   BluetoothDevice? get connectedDevice => _connectedDevice;
 
-  void _initListeners() {
-    try {
-      _isScanningSubscription = FlutterBluePlus.isScanning.listen((scanning) {
-        _isScanning = scanning;
-        notifyListeners();
-      });
+  void _initService() async {
+    if (_isWindows) {
+      try {
+        await WinBle.initialize(serverPath: "");
+        _winScanSubscription = WinBle.scanStream.listen((device) {
+          final exists = _windowsDevices.any((d) => d.address == device.address);
+          if (!exists) {
+            _windowsDevices.add(device);
+            notifyListeners();
+          }
+        });
+      } catch (e) {
+        debugPrint("WinBle initialize error: $e");
+      }
+    } else {
+      try {
+        _isScanningSubscription = FlutterBluePlus.isScanning.listen((scanning) {
+          _isScanning = scanning;
+          notifyListeners();
+        });
 
-      _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-        _scanResults = results;
-        notifyListeners();
-      });
-    } catch (e) {
-      debugPrint("BLE listeners not supported on this platform: $e");
+        _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+          _scanResults = results;
+          notifyListeners();
+        });
+      } catch (e) {
+        debugPrint("FlutterBluePlus init error: $e");
+      }
     }
   }
 
   Future<void> startScan() async {
-    try {
-      if (_isScanning) return;
-      _scanResults.clear();
-      notifyListeners();
-      await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 15),
-      );
-    } catch (e) {
-      debugPrint("Error starting BLE scan: $e");
+    _isScanning = true;
+    notifyListeners();
+
+    if (_isWindows) {
+      try {
+        _windowsDevices.clear();
+        notifyListeners();
+        WinBle.startScanning();
+      } catch (e) {
+        debugPrint("Error starting Windows BLE scan: $e");
+      }
+    } else {
+      try {
+        _scanResults.clear();
+        notifyListeners();
+        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      } catch (e) {
+        debugPrint("Error starting Android BLE scan: $e");
+      }
     }
   }
 
   Future<void> stopScan() async {
-    try {
-      if (!_isScanning) return;
-      await FlutterBluePlus.stopScan();
-    } catch (e) {
-      debugPrint("Error stopping BLE scan: $e");
+    _isScanning = false;
+    notifyListeners();
+
+    if (_isWindows) {
+      try {
+        WinBle.stopScanning();
+      } catch (e) {
+        debugPrint("Error stopping Windows BLE scan: $e");
+      }
+    } else {
+      try {
+        await FlutterBluePlus.stopScan();
+      } catch (e) {
+        debugPrint("Error stopping Android BLE scan: $e");
+      }
     }
   }
 
@@ -93,6 +138,34 @@ class RobotBluetoothService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Connect on Windows
+  Future<bool> connectWinDevice(BleDevice device) async {
+    try {
+      _isConnecting = true;
+      _isVirtualMode = false;
+      notifyListeners();
+
+      await stopScan();
+      await WinBle.connect(device.address);
+
+      _connectedWinAddress = device.address;
+      _isConnected = true;
+      _isConnecting = false;
+      _rssi = device.rssi.isNotEmpty ? int.tryParse(device.rssi) ?? -60 : -60;
+      notifyListeners();
+
+      await sendCommand("detener");
+      return true;
+    } catch (e) {
+      debugPrint("Error connecting on Windows: $e");
+      _isConnecting = false;
+      _isConnected = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Connect on Android
   Future<bool> connectDevice(BluetoothDevice device) async {
     try {
       _isConnecting = true;
@@ -101,7 +174,6 @@ class RobotBluetoothService extends ChangeNotifier {
 
       await stopScan();
 
-      // Listen to connection state changes
       _connectionStateSubscription?.cancel();
       _connectionStateSubscription = device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.connected) {
@@ -121,7 +193,6 @@ class RobotBluetoothService extends ChangeNotifier {
       _connectedDevice = device;
       _isConnected = true;
 
-      // Discover Services
       List<BluetoothService> services = await device.discoverServices();
       BluetoothCharacteristic? foundChar;
 
@@ -140,7 +211,6 @@ class RobotBluetoothService extends ChangeNotifier {
         }
       }
 
-      // If specific UUID char not found, look for any writable characteristic as fallback
       if (foundChar == null) {
         for (var service in services) {
           for (var char in service.characteristics) {
@@ -157,7 +227,6 @@ class RobotBluetoothService extends ChangeNotifier {
       _isConnecting = false;
       notifyListeners();
 
-      // Initial command send
       if (_targetCharacteristic != null) {
         await sendCommand("detener");
       }
@@ -175,7 +244,10 @@ class RobotBluetoothService extends ChangeNotifier {
   Future<void> disconnectDevice() async {
     try {
       _stopRssiTimer();
-      if (_connectedDevice != null && !_isVirtualMode) {
+      if (_isWindows && _connectedWinAddress != null && !_isVirtualMode) {
+        await sendCommand("detener");
+        await WinBle.disconnect(_connectedWinAddress!);
+      } else if (_connectedDevice != null && !_isVirtualMode) {
         await sendCommand("detener");
         await _connectedDevice!.disconnect();
       }
@@ -185,6 +257,7 @@ class RobotBluetoothService extends ChangeNotifier {
       _isConnected = false;
       _isVirtualMode = false;
       _connectedDevice = null;
+      _connectedWinAddress = null;
       _targetCharacteristic = null;
       notifyListeners();
     }
@@ -197,6 +270,24 @@ class RobotBluetoothService extends ChangeNotifier {
     if (_isVirtualMode) {
       debugPrint("Virtual ESP32 Command: $command");
       return true;
+    }
+
+    if (_isWindows && _connectedWinAddress != null) {
+      try {
+        List<int> bytes = utf8.encode(command);
+        await WinBle.write(
+          address: _connectedWinAddress!,
+          service: targetServiceUuidStr,
+          characteristic: targetCharacteristicUuidStr,
+          data: Uint8List.fromList(bytes),
+          writeWithResponse: false,
+        );
+        debugPrint("Sent Windows BLE command: $command");
+        return true;
+      } catch (e) {
+        debugPrint("Error sending Windows BLE command '$command': $e");
+        return false;
+      }
     }
 
     if (!_isConnected || _connectedDevice == null) {
@@ -224,7 +315,7 @@ class RobotBluetoothService extends ChangeNotifier {
   void _startRssiTimer() {
     _rssiTimer?.cancel();
     _rssiTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      if (_isConnected && _connectedDevice != null && !_isVirtualMode) {
+      if (_isConnected && _connectedDevice != null && !_isVirtualMode && !_isWindows) {
         try {
           _rssi = await _connectedDevice!.readRssi();
           notifyListeners();
@@ -244,6 +335,10 @@ class RobotBluetoothService extends ChangeNotifier {
     _isScanningSubscription?.cancel();
     _scanSubscription?.cancel();
     _connectionStateSubscription?.cancel();
+    _winScanSubscription?.cancel();
+    if (_isWindows) {
+      WinBle.dispose();
+    }
     super.dispose();
   }
 }
