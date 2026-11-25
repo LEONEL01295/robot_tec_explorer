@@ -13,7 +13,9 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
   @override
   void initState() {
     super.initState();
-    RobotBluetoothService.instance.startScan();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RobotBluetoothService.instance.startScan();
+    });
   }
 
   @override
@@ -99,8 +101,8 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bluetooth_connected, color: Color(0xFF10B981), size: 30),
-                      const SizedBox(width: 10),
+                      const Icon(Icons.bluetooth_connected, color: Color(0xFF10B981), size: 28),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +114,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                                fontSize: 13,
                               ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -148,19 +150,21 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
 
               // Section Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        "DISPOSITIVOS DISPONIBLES",
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "DISPOSITIVOS DISPONIBLES",
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
                       ),
                     ),
                     const SizedBox(width: 6),

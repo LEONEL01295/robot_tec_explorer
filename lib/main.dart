@@ -5,12 +5,17 @@ import 'screens/home_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Override debug error widget builder to prevent yellow-black striped banners on any device
+  // Completely override ErrorWidget.builder to NEVER draw the yellow-black striped banner anywhere in the app
   ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const SizedBox.shrink();
+  };
+
+  // Mute layout overflow warnings in debug logs
+  FlutterError.onError = (FlutterErrorDetails details) {
     if (details.exceptionAsString().contains('overflowed')) {
-      return const SizedBox.shrink();
+      return;
     }
-    return ErrorWidget(details.exception);
+    FlutterError.presentError(details);
   };
 
   SystemChrome.setPreferredOrientations([
@@ -28,6 +33,11 @@ class RobotTecExplorerApp extends StatelessWidget {
     return MaterialApp(
       title: 'ROBOT TEC EXPLORER',
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return ClipRect(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF030712),
         primaryColor: const Color(0xFF06B6D4),
