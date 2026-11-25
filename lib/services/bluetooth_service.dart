@@ -15,8 +15,9 @@ class RobotBluetoothService extends ChangeNotifier {
     _initService();
   }
 
-  // BLE Constants
+  // BLE Constants & Target Device Parameters
   static const String targetDeviceName = "TANQUE-ESP32";
+  static const String targetMacAddress = "F4:65:0B:47:05:CA";
   static const String targetServiceUuidStr = "12345678-1234-5678-1234-56789abcdef0";
   static const String targetCharacteristicUuidStr = "abcdef01-1234-5678-1234-56789abcdef0";
 
@@ -153,9 +154,11 @@ class RobotBluetoothService extends ChangeNotifier {
       notifyListeners();
 
       await stopScan();
-      await WinBle.connect(address);
+      // Format MAC address for WinBle (lowercase or uppercase without dashes)
+      String cleanAddr = address.trim().replaceAll('-', ':').toLowerCase();
+      await WinBle.connect(cleanAddr);
 
-      _connectedWinAddress = address;
+      _connectedWinAddress = cleanAddr;
       _isConnected = true;
       _isConnecting = false;
       _rssi = rssiStr.isNotEmpty ? int.tryParse(rssiStr) ?? -55 : -55;
