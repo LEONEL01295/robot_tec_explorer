@@ -65,6 +65,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
           final isConnecting = ble.isConnecting;
           final results = ble.scanResults;
           final connectedDevice = ble.connectedDevice;
+          final isVirtualMode = ble.isVirtualMode;
 
           return Column(
             children: [
@@ -90,7 +91,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
               ),
 
               // Current Connection Status Card
-              if (isConnected && connectedDevice != null)
+              if (isConnected)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   padding: const EdgeInsets.all(12),
@@ -108,9 +109,11 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              connectedDevice.platformName.isNotEmpty
-                                  ? connectedDevice.platformName
-                                  : "TANQUE-ESP32",
+                              isVirtualMode
+                                  ? "TANQUE-ESP32 (VIRTUAL MOCK)"
+                                  : (connectedDevice?.platformName.isNotEmpty == true
+                                      ? connectedDevice!.platformName
+                                      : "TANQUE-ESP32"),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -120,7 +123,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               maxLines: 1,
                             ),
                             Text(
-                              connectedDevice.remoteId.str,
+                              isVirtualMode ? "VIRTUAL_MAC_00:11:22" : (connectedDevice?.remoteId.str ?? "N/A"),
                               style: const TextStyle(color: Colors.white54, fontSize: 10),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -198,9 +201,31 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                "Asegúrate de que el ESP32 esté encendido con BLE activo",
+                                "En móviles usa Bluetooth y GPS. En Windows usa el botón de abajo:",
                                 style: TextStyle(color: Colors.white38, fontSize: 10),
                                 textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  ble.connectVirtualDevice();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Conectado a TANQUE-ESP32 (Modo Simulación / Windows)"),
+                                      backgroundColor: Color(0xFF10B981),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.flash_on, color: Colors.black, size: 18),
+                                label: const Text(
+                                  "CONECTAR TANQUE ESP32 (MODO MOCK / WINDOWS)",
+                                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00E5FF),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
                               ),
                             ],
                           ),

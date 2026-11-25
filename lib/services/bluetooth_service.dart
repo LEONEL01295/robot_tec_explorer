@@ -23,7 +23,8 @@ class RobotBluetoothService extends ChangeNotifier {
   bool _isScanning = false;
   bool _isConnecting = false;
   bool _isConnected = false;
-  int _rssi = 0;
+  bool _isVirtualMode = false;
+  int _rssi = -55;
   String _currentCommand = "detener";
 
   List<ScanResult> _scanResults = [];
@@ -39,21 +40,26 @@ class RobotBluetoothService extends ChangeNotifier {
   bool get isScanning => _isScanning;
   bool get isConnecting => _isConnecting;
   bool get isConnected => _isConnected;
+  bool get isVirtualMode => _isVirtualMode;
   int get rssi => _rssi;
   String get currentCommand => _currentCommand;
   List<ScanResult> get scanResults => _scanResults;
   BluetoothDevice? get connectedDevice => _connectedDevice;
 
   void _initListeners() {
-    _isScanningSubscription = FlutterBluePlus.isScanning.listen((scanning) {
-      _isScanning = scanning;
-      notifyListeners();
-    });
+    try {
+      _isScanningSubscription = FlutterBluePlus.isScanning.listen((scanning) {
+        _isScanning = scanning;
+        notifyListeners();
+      });
 
-    _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-      _scanResults = results;
-      notifyListeners();
-    });
+      _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+        _scanResults = results;
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint("BLE listeners not supported on this platform: $e");
+    }
   }
 
   Future<void> startScan() async {
@@ -78,9 +84,19 @@ class RobotBluetoothService extends ChangeNotifier {
     }
   }
 
+  void connectVirtualDevice() {
+    _isVirtualMode = true;
+    _isConnected = true;
+    _isConnecting = false;
+    _rssi = -48;
+    _currentCommand = "detener";
+    notifyListeners();
+  }
+
   Future<bool> connectDevice(BluetoothDevice device) async {
     try {
       _isConnecting = true;
+      _isVirtualMode = false;
       notifyListeners();
 
       await stopScan();
@@ -159,7 +175,7 @@ class RobotBluetoothService extends ChangeNotifier {
   Future<void> disconnectDevice() async {
     try {
       _stopRssiTimer();
-      if (_connectedDevice != null) {
+      if (_connectedDevice != null && !_isVirtualMode) {
         await sendCommand("detener");
         await _connectedDevice!.disconnect();
       }
@@ -167,6 +183,7 @@ class RobotBluetoothService extends ChangeNotifier {
       debugPrint("Error disconnecting device: $e");
     } finally {
       _isConnected = false;
+      _isVirtualMode = false;
       _connectedDevice = null;
       _targetCharacteristic = null;
       notifyListeners();
@@ -176,6 +193,11 @@ class RobotBluetoothService extends ChangeNotifier {
   Future<bool> sendCommand(String command) async {
     _currentCommand = command;
     notifyListeners();
+
+    if (_isVirtualMode) {
+      debugPrint("Virtual ESP32 Command: $command");
+      return true;
+    }
 
     if (!_isConnected || _connectedDevice == null) {
       debugPrint("Cannot send command '$command': Device not connected");
@@ -202,7 +224,7 @@ class RobotBluetoothService extends ChangeNotifier {
   void _startRssiTimer() {
     _rssiTimer?.cancel();
     _rssiTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      if (_isConnected && _connectedDevice != null) {
+      if (_isConnected && _connectedDevice != null && !_isVirtualMode) {
         try {
           _rssi = await _connectedDevice!.readRssi();
           notifyListeners();
