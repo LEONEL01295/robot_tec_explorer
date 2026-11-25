@@ -147,6 +147,10 @@ class RobotBluetoothService extends ChangeNotifier {
     return connectWinAddress(device.address, name: device.name, rssiStr: device.rssi);
   }
 
+  Future<bool> connectDefaultTargetMac() async {
+    return connectWinAddress(targetMacAddress, name: targetDeviceName);
+  }
+
   Future<bool> connectWinAddress(String address, {String name = "TANQUE-ESP32", String rssiStr = "-50"}) async {
     try {
       _isConnecting = true;
