@@ -34,8 +34,7 @@ class _ControlScreenState extends State<ControlScreen> {
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
-            letterSpacing: 1.2,
+            fontSize: 15,
           ),
         ),
         actions: [
@@ -44,8 +43,8 @@ class _ControlScreenState extends State<ControlScreen> {
             builder: (context, _) {
               final isConnected = RobotBluetoothService.instance.isConnected;
               return Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isConnected
                       ? const Color(0xFF10B981).withValues(alpha: 0.2)
@@ -54,11 +53,12 @@ class _ControlScreenState extends State<ControlScreen> {
                   border: Border.all(color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
                       color: isConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -109,15 +109,15 @@ class _ControlScreenState extends State<ControlScreen> {
 
                 // Quick Directional Command Buttons Grid
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
                       const Text(
                         "BOTONES DIRECTOS DE CONTROL",
                         style: TextStyle(
                           color: Colors.white54,
-                          fontSize: 11,
-                          letterSpacing: 1.2,
+                          fontSize: 10,
+                          letterSpacing: 1.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -133,9 +133,9 @@ class _ControlScreenState extends State<ControlScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildQuickCmdButton("izquierda", Icons.arrow_back, const Color(0xFF3B82F6)),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           _buildQuickCmdButton("detener", Icons.stop, const Color(0xFFEF4444)),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           _buildQuickCmdButton("derecha", Icons.arrow_forward, const Color(0xFF3B82F6)),
                         ],
                       ),
@@ -154,8 +154,8 @@ class _ControlScreenState extends State<ControlScreen> {
 
                 // Terminal / Telemetry Console
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: const EdgeInsets.all(12),
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: const Color(0xFF0F172A),
@@ -168,24 +168,33 @@ class _ControlScreenState extends State<ControlScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
-                          Row(
-                            children: [
-                              Icon(Icons.terminal, color: Color(0xFF38BDF8), size: 18),
-                              SizedBox(width: 8),
-                              Text("TELEMETRÍA DE COMANDOS BLE", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                            ],
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.terminal, color: Color(0xFF38BDF8), size: 16),
+                                SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    "TELEMETRÍA DE COMANDOS",
+                                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Text("ESP32 GPIO 13/12/14/27", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                          SizedBox(width: 6),
+                          Text("GPIO 13/12/14/27", style: TextStyle(color: Colors.white38, fontSize: 9)),
                         ],
                       ),
-                      const Divider(color: Colors.white10, height: 16),
+                      const Divider(color: Colors.white10, height: 14),
                       SizedBox(
                         height: 90,
                         child: _commandLog.isEmpty
                             ? const Center(
                                 child: Text(
                                   "Esperando comandos del usuario...",
-                                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                                  style: TextStyle(color: Colors.white38, fontSize: 10),
                                 ),
                               )
                             : ListView.builder(
@@ -195,7 +204,7 @@ class _ControlScreenState extends State<ControlScreen> {
                                     _commandLog[index],
                                     style: const TextStyle(
                                       color: Color(0xFF38BDF8),
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontFamily: 'monospace',
                                     ),
                                   );
@@ -234,8 +243,8 @@ class _ControlScreenState extends State<ControlScreen> {
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 80,
-          height: 48,
+          width: 76,
+          height: 46,
           decoration: BoxDecoration(
             color: isCurrent ? color : color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
@@ -250,7 +259,7 @@ class _ControlScreenState extends State<ControlScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isCurrent ? Colors.white : color, size: 20),
+              Icon(icon, color: isCurrent ? Colors.white : color, size: 18),
               Text(
                 cmd.toUpperCase(),
                 style: TextStyle(
