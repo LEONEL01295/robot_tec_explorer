@@ -46,7 +46,7 @@ def derecha():
     IN3.off()
     IN4.on()
 
-# Estado inicial
+# Estado inicial: Motores apagados
 detener()
 
 # ==================================
@@ -77,16 +77,24 @@ SERVICE = (
 
 DEVICE_NAME = "TANQUE-ESP32"
 
-def advertising_payload(name):
+def advertising_payload(name="TANQUE-ESP32"):
     payload = bytearray()
-    payload += bytes([0x02, 0x01, 0x06])  # Flags
-    payload += bytes([len(name) + 1, 0x09])  # Complete Local Name
-    payload += name.encode()
+
+    # Flags: General Discoverable Mode (0x06)
+    payload += bytes([0x02, 0x01, 0x06])
+
+    # Name: Complete Local Name (0x09)
+    name_bytes = name.encode('utf-8')
+    payload += bytes([len(name_bytes) + 1, 0x09]) + name_bytes
+
     return payload
 
 def iniciar_advertising():
-    ble.gap_advertise(100000, advertising_payload(DEVICE_NAME))
-    print("Publicando BLE como:", DEVICE_NAME)
+    try:
+        ble.gap_advertise(100000, advertising_payload(DEVICE_NAME), connectable=True)
+        print("✅ Publicando BLE activo como:", DEVICE_NAME)
+    except Exception as e:
+        print("❌ Error al iniciar advertising BLE:", e)
 
 iniciar_advertising()
 
@@ -118,13 +126,13 @@ def ejecutar_comando(cmd):
 def ble_irq(event, data):
     if event == _IRQ_CENTRAL_CONNECT:
         conn_handle, addr_type, addr = data
-        print("Dispositivo conectado exitosamente")
+        print("📡 Dispositivo conectado exitosamente")
 
     elif event == _IRQ_CENTRAL_DISCONNECT:
         conn_handle, addr_type, addr = data
-        print("Dispositivo desconectado -> Deteniendo motores")
+        print("🔌 Dispositivo desconectado -> Deteniendo motores")
         detener()
-        # Volver a anunciar para permitir reconexiones sin reiniciar
+        # Volver a anunciar BLE inmediatamente
         iniciar_advertising()
 
     elif event == _IRQ_GATTS_WRITE:
@@ -144,8 +152,10 @@ ble.irq(ble_irq)
 # BUCLE PRINCIPAL
 # ==================================
 
-print("Bluetooth iniciado")
+print("================================")
+print("ROBOT TEC EXPLORER BLE LISTO")
 print("Nombre BLE:", DEVICE_NAME)
+print("================================")
 
 while True:
     time.sleep_ms(100)
