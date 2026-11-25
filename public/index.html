@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Tec Explorer | Plataforma Educativa de Robótica & ESP32</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #080C14;
+            --bg-card: rgba(15, 23, 42, 0.65);
+            --bg-glass: rgba(13, 21, 38, 0.7);
+            --border-glow: rgba(0, 229, 255, 0.25);
+            --green: #00E676;
+            --cyan: #00E5FF;
+            --blue: #2979FF;
+            --purple: #D500F9;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --font-main: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Canvas Particle Background */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-panel:hover {
+            border-color: var(--cyan);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 50%, var(--purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .text-gradient-green {
+            background: linear-gradient(135deg, var(--green) 0%, var(--cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 50px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-family: var(--font-main);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 0 35px rgba(0, 229, 255, 0.7);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .btn-green {
+            background: linear-gradient(135deg, var(--green), #00B0FF);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+        }
+
+        .btn-green:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 0 35px rgba(0, 230, 118, 0.7);
+        }
+
+        /* Layout & Containers */
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        section {
+            padding: 100px 0;
+            position: relative;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title h2 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 1. Navbar */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 16px 0;
+            background: rgba(8, 12, 20, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--cyan);
+        }
+
+        .mobile-toggle {
+            display: none;
+            font-size: 1.8rem;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        /* 2. Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 140px;
+            background: radial-gradient(circle at 50% 30%, rgba(0, 229, 255, 0.08) 0%, rgba(8, 12, 20, 0) 70%);
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            line-height: 1.1;
+            font-weight: 700;
+            margin-bottom: 24px;
+            letter-spacing: -1.5px;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 36px;
+            max-width: 580px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .hero-status-card {
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-status-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent 0 340deg, var(--cyan) 360deg);
+            animation: rotate 6s linear infinite;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(0, 230, 118, 0.15);
+            border: 1px solid var(--green);
+            border-radius: 30px;
+            color: var(--green);
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 1.5s infinite;
+        }
+
+        .tech-tags {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .tech-tag {
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+        }
+
+        /* 3. Statistics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .stat-card {
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* 4. Robot & Scheme */
+        .robot-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .robot-card {
+            padding: 30px;
+        }
+
+        .robot-card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+
+        .robot-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .robot-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .scheme-box {
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(8, 12, 20, 0.9) 100%);
+        }
+
+        .scheme-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .scheme-node {
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--cyan);
+            border-radius: 12px;
+            font-weight: 700;
+            color: var(--cyan);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .scheme-arrow {
+            font-size: 1.5rem;
+            color: var(--purple);
+            font-weight: 700;
+        }
+
+        /* 5. Downloads */
+        .download-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .download-card {
+            padding: 40px 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .download-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            background: rgba(0, 229, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            border: 1px solid var(--cyan);
+        }
+
+        .download-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+        }
+
+        .download-card span {
+            color: var(--purple);
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .download-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+            flex-grow: 1;
+        }
+
+        /* 6. Missions */
+        .missions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
+        .mission-card {
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mission-num {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.05);
+        }
+
+        .mission-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(213, 0, 249, 0.2);
+            border: 1px solid var(--purple);
+            color: var(--purple);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .mission-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        /* 7. Technologies */
+        .tech-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .tech-item {
+            padding: 16px 28px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+        }
+
+        .tech-item:hover {
+            border-color: var(--green);
+            color: var(--green);
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.2);
+        }
+
+        /* 8. Gallery */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
+        .gallery-card {
+            height: 280px;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            padding: 24px;
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gallery-bg-1 {
+            background: linear-gradient(180deg, transparent 30%, rgba(8,12,20,0.95) 100%), radial-gradient(circle, var(--blue) 0%, var(--bg-color) 100%);
+        }
+        .gallery-bg-2 {
+            background: linear-gradient(180deg, transparent 30%, rgba(8,12,20,0.95) 100%), radial-gradient(circle, var(--purple) 0%, var(--bg-color) 100%);
+        }
+        .gallery-bg-3 {
+            background: linear-gradient(180deg, transparent 30%, rgba(8,12,20,0.95) 100%), radial-gradient(circle, var(--green) 0%, var(--bg-color) 100%);
+        }
+        .gallery-bg-4 {
+            background: linear-gradient(180deg, transparent 30%, rgba(8,12,20,0.95) 100%), radial-gradient(circle, var(--cyan) 0%, var(--bg-color) 100%);
+        }
+
+        .gallery-content h3 {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        .gallery-content p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* 9. Team */
+        .team-section {
+            background: radial-gradient(circle at 50% 50%, rgba(41, 121, 255, 0.05) 0%, transparent 70%);
+        }
+
+        .team-category {
+            margin-bottom: 50px;
+        }
+
+        .team-category h3 {
+            font-size: 1.5rem;
+            color: var(--cyan);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .team-card {
+            padding: 24px;
+            text-align: center;
+        }
+
+        .team-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .team-card h4 {
+            font-size: 1.05rem;
+            margin-bottom: 4px;
+        }
+
+        .team-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* 10. FAQ */
+        .faq-accordion {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .faq-item {
+            padding: 24px;
+            cursor: pointer;
+        }
+
+        .faq-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .faq-icon {
+            font-size: 1.4rem;
+            color: var(--cyan);
+            transition: transform 0.3s;
+        }
+
+        .faq-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, margin-top 0.3s ease;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .faq-item.active .faq-body {
+            max-height: 200px;
+            margin-top: 16px;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+
+        /* 11. Footer */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 50px 0;
+            text-align: center;
+            background: rgba(8, 12, 20, 0.95);
+        }
+
+        .footer-logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+
+        .footer-copy {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.85rem;
+        }
+
+        /* Animations & Scroll Reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Mobile Styling */
+        @media (max-width: 900px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-content h1 {
+                font-size: 2.8rem;
+            }
+            .hero-buttons {
+                justify-content: center;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: var(--bg-color);
+                flex-direction: column;
+                padding: 20px;
+                text-align: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .mobile-toggle {
+                display: block;
+            }
+            .scheme-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Particle Starfield Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- 1. Navbar -->
+    <header>
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                🤖 <span class="text-gradient">Robot Tec Explorer</span>
+            </a>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#robot">Robot</a></li>
+                <li><a href="#misiones">Misiones</a></li>
+                <li><a href="#tecnologias">Tecnologías</a></li>
+                <li><a href="#equipo">Equipo</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+            <a href="#descargas" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.9rem;">Descargar APK</a>
+            <div class="mobile-toggle" id="mobile-toggle">☰</div>
+        </div>
+    </header>
+
+    <!-- 2. Hero Section -->
+    <section class="hero" id="inicio">
+        <div class="container hero-grid">
+            <div class="hero-content reveal">
+                <h1>ROBOT TEC <br><span class="text-gradient">EXPLORER</span></h1>
+                <p>Plataforma educativa de robótica, programación y automatización basada en ESP32 y Bluetooth BLE. Diseñada para inspirar a exploradores del futuro.</p>
+                <div class="hero-buttons">
+                    <a href="#descargas" class="btn btn-primary">📥 Descargar APK</a>
+                    <a href="#misiones" class="btn btn-secondary">🎮 Iniciar Misión</a>
+                </div>
+            </div>
+            <div class="hero-status-card glass-panel reveal">
+                <div class="status-badge">
+                    <div class="pulse-dot"></div> SISTEMA ONLINE
+                </div>
+                <h3 style="font-size: 1.8rem; margin-bottom: 10px;">TANQUE ESP32</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Control teleoperado en tiempo real con protocolo inalámbrico de baja latencia.</p>
+                <div class="tech-tags">
+                    <span class="tech-tag">Bluetooth BLE</span>
+                    <span class="tech-tag">ESP32</span>
+                    <span class="tech-tag">Flutter</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Estadísticas -->
+    <section style="padding: 40px 0;">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card glass-panel reveal">
+                    <div class="stat-number" data-target="500">0</div>
+                    <div class="stat-label">Estudiantes Impactados</div>
+                </div>
+                <div class="stat-card glass-panel reveal">
+                    <div class="stat-number" data-target="25">0</div>
+                    <div class="stat-label">Proyectos Desarrollados</div>
+                </div>
+                <div class="stat-card glass-panel reveal">
+                    <div class="stat-number" style="color: var(--green);">ESP32</div>
+                    <div class="stat-label">Hardware Principal</div>
+                </div>
+                <div class="stat-card glass-panel reveal">
+                    <div class="stat-number" style="color: var(--purple);">BLE</div>
+                    <div class="stat-label">Comunicación Inalámbrica</div>
+                </div>
+                <div class="stat-card glass-panel reveal">
+                    <div class="stat-number" style="color: var(--blue);">Flutter</div>
+                    <div class="stat-label">App Móvil Multiplataforma</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Robot -->
+    <section id="robot">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Exploración & <span class="text-gradient">Hardware</span></h2>
+                <p>Diseñado desde cero para la enseñanza práctica de la mecatrónica y ciencias de la computación.</p>
+            </div>
+
+            <div class="robot-cards">
+                <div class="robot-card glass-panel reveal">
+                    <div class="robot-card-icon">🤖</div>
+                    <h3>Robot Tanque</h3>
+                    <p>Chasis de alta tracción con orugas dobles controlado mediante puentes H y salidas GPIO dedicadas.</p>
+                </div>
+                <div class="robot-card glass-panel reveal">
+                    <div class="robot-card-icon">🚀</div>
+                    <h3>Exploración Espacial</h3>
+                    <p>Módulos de navegación simulada en entornos hostiles con telemetría en vivo vía Bluetooth.</p>
+                </div>
+                <div class="robot-card glass-panel reveal">
+                    <div class="robot-card-icon">📚</div>
+                    <h3>Aprendizaje STEM</h3>
+                    <p>Fomenta el razonamiento lógico, pensamiento computacional y fundamentos de electrónica.</p>
+                </div>
+                <div class="robot-card glass-panel reveal">
+                    <div class="robot-card-icon">⚡</div>
+                    <h3>Automatización</h3>
+                    <p>Programación de trayectorias, control de velocidades PWM y procesamiento directo en el microcontrolador.</p>
+                </div>
+            </div>
+
+            <!-- Esquema de Comunicación -->
+            <div class="scheme-box glass-panel reveal">
+                <h3 style="font-size: 1.6rem;">Esquema de Arquitectura del Sistema</h3>
+                <div class="scheme-flow">
+                    <div class="scheme-node">📱 App Flutter</div>
+                    <div class="scheme-arrow">➔</div>
+                    <div class="scheme-node">📶 Bluetooth BLE</div>
+                    <div class="scheme-arrow">➔</div>
+                    <div class="scheme-node">🧠 ESP32 Core</div>
+                    <div class="scheme-arrow">➔</div>
+                    <div class="scheme-node">⚙️ Driver L298N</div>
+                    <div class="scheme-arrow">➔</div>
+                    <div class="scheme-node">🏎️ Motores</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Descargas -->
+    <section id="descargas" style="background: radial-gradient(circle at 50% 50%, rgba(0, 230, 118, 0.05) 0%, transparent 70%);">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Centro de <span class="text-gradient-green">Descargas</span></h2>
+                <p>Obtén las aplicaciones y código fuente listos para desplegar en tu equipo.</p>
+            </div>
+
+            <div class="download-cards">
+                <div class="download-card glass-panel reveal">
+                    <div class="download-icon">🤖</div>
+                    <h3>Android App</h3>
+                    <span>APK Versión 1.0</span>
+                    <p>Aplicación nativa compilada para teléfonos y tabletas Android con soporte BLE 5.0.</p>
+                    <a href="#" class="btn btn-green">Descargar APK</a>
+                </div>
+
+                <div class="download-card glass-panel reveal">
+                    <div class="download-icon">💻</div>
+                    <h3>Windows Studio</h3>
+                    <span>EXE Portable</span>
+                    <p>Simulador de consola de control para escritorio con soporte de comandos teleoperados.</p>
+                    <a href="#" class="btn btn-primary">Descargar EXE</a>
+                </div>
+
+                <div class="download-card glass-panel reveal">
+                    <div class="download-icon">🧠</div>
+                    <h3>Firmware ESP32</h3>
+                    <span>MicroPython / C++</span>
+                    <p>Código fuente con el servidor BLE GATT configurado para recibir la trama de comandos.</p>
+                    <a href="#" class="btn btn-secondary">Descargar Firmware</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Misiones -->
+    <section id="misiones">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Misiones de <span class="text-gradient">Entrenamiento</span></h2>
+                <p>Supera desafíos interactivos diseñados para poner a prueba tus habilidades de pilotaje.</p>
+            </div>
+
+            <div class="missions-grid">
+                <div class="mission-card glass-panel reveal">
+                    <div class="mission-num">01</div>
+                    <span class="mission-badge">Nivel Inicial</span>
+                    <h3>Misión 1: Explora Marte</h3>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Establece conexión BLE con el tanque y realiza un reconocimiento inicial del terreno marciano.</p>
+                </div>
+
+                <div class="mission-card glass-panel reveal">
+                    <div class="mission-num">02</div>
+                    <span class="mission-badge">Nivel Intermedio</span>
+                    <h3>Misión 2: Encuentra Energía</h3>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Navega entre obstáculos para recolectar celdas solares y recargar las baterías del rover.</p>
+                </div>
+
+                <div class="mission-card glass-panel reveal">
+                    <div class="mission-num">03</div>
+                    <span class="mission-badge">Nivel Avanzado</span>
+                    <h3>Misión 3: Rescata el Robot Perdido</h3>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Sigue las señales de pulso para ubicar a la sonda de exploración descompuesta.</p>
+                </div>
+
+                <div class="mission-card glass-panel reveal">
+                    <div class="mission-num">04</div>
+                    <span class="mission-badge" style="border-color: var(--cyan); color: var(--cyan); background: rgba(0, 229, 255, 0.15);">Nivel Experto</span>
+                    <h3>Misión 4: Estación Orbital</h3>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Maniobra a alta velocidad y acóplate con precisión milimétrica en el puerto de atraque.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Tecnologías -->
+    <section id="tecnologias">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Tecnologías del <span class="text-gradient">Ecosistema</span></h2>
+                <p>Herramientas y lenguajes de nivel profesional integrados en el proyecto.</p>
+            </div>
+
+            <div class="tech-grid reveal">
+                <div class="tech-item">💙 Flutter</div>
+                <div class="tech-item">🧠 ESP32</div>
+                <div class="tech-item">📶 Bluetooth BLE</div>
+                <div class="tech-item">🐍 MicroPython</div>
+                <div class="tech-item">🔥 Firebase</div>
+                <div class="tech-item">🤖 Android</div>
+                <div class="tech-item">🛠️ Android Studio</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Galería -->
+    <section>
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Galería de <span class="text-gradient">Exposición</span></h2>
+                <p>Capturas del prototipo en funcionamiento durante demostraciones y ferias científicas.</p>
+            </div>
+
+            <div class="gallery-grid">
+                <div class="gallery-card gallery-bg-1 glass-panel reveal">
+                    <div class="gallery-content">
+                        <h3>🤖 Tanque Robótico</h3>
+                        <p>Prototipo físico ensamblado con tracción de orugas.</p>
+                    </div>
+                </div>
+                <div class="gallery-card gallery-bg-2 glass-panel reveal">
+                    <div class="gallery-content">
+                        <h3>🧠 Módulo ESP32</h3>
+                        <p>Placa de desarrollo con microcontrolador dual core.</p>
+                    </div>
+                </div>
+                <div class="gallery-card gallery-bg-3 glass-panel reveal">
+                    <div class="gallery-content">
+                        <h3>👥 Trabajo en Equipo</h3>
+                        <p>Fase de programación e integración mecatrónica.</p>
+                    </div>
+                </div>
+                <div class="gallery-card gallery-bg-4 glass-panel reveal">
+                    <div class="gallery-content">
+                        <h3>🏆 Exposición Científica</h3>
+                        <p>Demostración en vivo frente a estudiantes e investigadores.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Equipo -->
+    <section id="equipo" class="team-section">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Equipo de <span class="text-gradient">Desarrollo</span></h2>
+                <p>Estudiantes y docentes apasionados por la tecnología y la robótica educativa.</p>
+            </div>
+
+            <!-- Estudiantes -->
+            <div class="team-category reveal">
+                <h3>Desarrolladores</h3>
+                <div class="team-grid">
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar">S</div>
+                        <h4>Sebastian Salvador Cortes Castillo</h4>
+                        <p>Líder & Hardware</p>
+                    </div>
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar">L</div>
+                        <h4>Luis Angel Mejia Santibañez</h4>
+                        <p>Firmware ESP32</p>
+                    </div>
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar">A</div>
+                        <h4>Armando Betancourt Silva</h4>
+                        <p>Flutter App</p>
+                    </div>
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar">G</div>
+                        <h4>Gahel Reynoso Franco</h4>
+                        <p>Diseño Mecánico</p>
+                    </div>
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar">C</div>
+                        <h4>Critopher Cisneros Marin</h4>
+                        <p>Bluetooth BLE</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Docentes -->
+            <div class="team-category reveal" style="margin-bottom: 0;">
+                <h3 style="color: var(--purple);">Docentes Asesores</h3>
+                <div class="team-grid" style="justify-content: center; max-width: 600px; margin: 0 auto;">
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar" style="background: linear-gradient(135deg, var(--purple), var(--blue));">M</div>
+                        <h4>Manuel Loeza González</h4>
+                        <p>Asesor Mecatrónica</p>
+                    </div>
+                    <div class="team-card glass-panel">
+                        <div class="team-avatar" style="background: linear-gradient(135deg, var(--purple), var(--blue));">E</div>
+                        <h4>Edgar de Jesús Chávez Damián</h4>
+                        <p>Asesor de Software</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10. FAQ -->
+    <section id="faq">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>Preguntas <span class="text-gradient">Frecuentes</span></h2>
+                <p>Resuelve tus dudas sobre el proyecto y su funcionamiento.</p>
+            </div>
+
+            <div class="faq-accordion reveal">
+                <div class="faq-item glass-panel">
+                    <div class="faq-header">
+                        ¿Qué es una ESP32?
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-body">
+                        La ESP32 es una potente placa de desarrollo de bajo costo con conectividad Wi-Fi y Bluetooth BLE integrada. Es el cerebro que procesa los comandos en el robot.
+                    </div>
+                </div>
+
+                <div class="faq-item glass-panel">
+                    <div class="faq-header">
+                        ¿Cómo conectar el robot?
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-body">
+                        Solo abre la aplicación en tu teléfono Android, activa el Bluetooth y presiona el botón "Conectar Robot". La app buscará automáticamente al dispositivo "TANQUE-ESP32".
+                    </div>
+                </div>
+
+                <div class="faq-item glass-panel">
+                    <div class="faq-header">
+                        ¿Necesita conexión a Internet?
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-body">
+                        No. Toda la comunicación entre la aplicación móvil y el tanque robótico se realiza de manera directa y local punto a punto mediante Bluetooth Low Energy (BLE).
+                    </div>
+                </div>
+
+                <div class="faq-item glass-panel">
+                    <div class="faq-header">
+                        ¿Qué se aprende con este proyecto?
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-body">
+                        Se aprenden conceptos clave de electrónica, programación de microcontroladores, desarrollo de apps móviles en Flutter, protocolos de comunicación inalámbrica y pensamiento algorítmico.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11. Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-logo">
+                🤖 <span class="text-gradient">Robot Tec Explorer</span>
+            </div>
+            <p class="footer-text">Inspirando a las nuevas generaciones a través de la robótica y la exploración tecnológica.</p>
+            <p class="footer-copy">© 2027 Robótica Educativa • Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript embebido -->
+    <script>
+        // Interactive Starfield Canvas Animation
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let stars = [];
+        const numStars = 120;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Star {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = (Math.random() - 0.5) * 0.3;
+                this.color = ['#00E5FF', '#D500F9', '#00E676', '#FFFFFF'][Math.floor(Math.random() * 4)];
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < numStars; i++) {
+            stars.push(new Star());
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        animateStars();
+
+        // Mobile Nav Toggle
+        const mobileToggle = document.getElementById('mobile-toggle');
+        const navLinks = document.getElementById('nav-links');
+
+        mobileToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+
+        // FAQ Accordion
+        const faqItems = document.querySelectorAll('.faq-item');
+
+        faqItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                faqItems.forEach(i => i.classList.remove('active'));
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Scroll Reveal Animation
+        const revealElements = document.querySelectorAll('.reveal');
+
+        function checkReveal() {
+            const windowHeight = window.innerHeight;
+            const revealPoint = 100;
+
+            revealElements.forEach(el => {
+                const revealTop = el.getBoundingClientRect().top;
+                if (revealTop < windowHeight - revealPoint) {
+                    el.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', checkReveal);
+        checkReveal();
+
+        // Stat Counter Animation
+        const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+        let animatedStats = false;
+
+        function animateCounters() {
+            if (animatedStats) return;
+            const statsSection = document.querySelector('.stats-grid');
+            if (!statsSection) return;
+
+            const sectionTop = statsSection.getBoundingClientRect().top;
+            if (sectionTop < window.innerHeight - 50) {
+                animatedStats = true;
+                statNumbers.forEach(num => {
+                    const target = +num.getAttribute('data-target');
+                    let current = 0;
+                    const increment = target / 50;
+
+                    const updateCounter = () => {
+                        current += increment;
+                        if (current < target) {
+                            num.innerText = Math.ceil(current) + '+';
+                            setTimeout(updateCounter, 30);
+                        } else {
+                            num.innerText = target + '+';
+                        }
+                    };
+                    updateCounter();
+                });
+            }
+        }
+
+        window.addEventListener('scroll', animateCounters);
+    </script>
+</body>
+</html>

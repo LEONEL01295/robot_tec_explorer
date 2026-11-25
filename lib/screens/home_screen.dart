@@ -40,181 +40,185 @@ class HomeScreen extends StatelessWidget {
             painter: _SpaceGridPainter(),
           ),
 
-          // Main Content Area
+          // Main Content Area (Scrollable to prevent overflow)
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-
-                // Title Section
-                Column(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
-                        border: Border.all(color: const Color(0xFF06B6D4), width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            spreadRadius: 2,
+                    // Title Section
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
+                            border: Border.all(color: const Color(0xFF06B6D4), width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
+                          child: const Icon(
+                            Icons.rocket_launch,
+                            color: Color(0xFF38BDF8),
+                            size: 40,
+                          ),
+                        ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
+
+                        const SizedBox(height: 12),
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)],
+                          ).createShader(bounds),
+                          child: const Text(
+                            "ROBOT TEC EXPLORER",
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.3, end: 0),
+
+                        const SizedBox(height: 4),
+                        const Text(
+                          "CONTROL DE TANQUE ESP32 BLE",
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                            letterSpacing: 1.8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Connection Status Widget
+                    const RobotStatusWidget(),
+
+                    const SizedBox(height: 20),
+
+                    // Menu Buttons List
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          _buildMenuButton(
+                            context: context,
+                            icon: Icons.bluetooth_searching,
+                            label: "CONECTAR ROBOT",
+                            subtitle: "Buscar y vincular TANQUE-ESP32",
+                            color: const Color(0xFF06B6D4),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const BluetoothScreen()),
+                            ),
+                          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2, end: 0),
+
+                          const SizedBox(height: 12),
+
+                          _buildMenuButton(
+                            context: context,
+                            icon: Icons.gamepad,
+                            label: "COMENZAR MISIÓN",
+                            subtitle: "Control Joystick y misiones de campo",
+                            color: const Color(0xFF10B981),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ControlScreen()),
+                            ),
+                          ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.2, end: 0),
+
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSmallButton(
+                                  context: context,
+                                  icon: Icons.emoji_events,
+                                  label: "LOGROS",
+                                  color: const Color(0xFFF59E0B),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const AchievementsScreen()),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildSmallButton(
+                                  context: context,
+                                  icon: Icons.flag,
+                                  label: "MISIONES",
+                                  color: const Color(0xFF8B5CF6),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const MissionsScreen()),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
+
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSmallButton(
+                                  context: context,
+                                  icon: Icons.groups,
+                                  label: "COLABORADORES",
+                                  color: const Color(0xFFEC4899),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const TeamScreen()),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildSmallButton(
+                                  context: context,
+                                  icon: Icons.settings,
+                                  label: "CONFIGURACIÓN",
+                                  color: const Color(0xFF64748B),
+                                  onTap: () => _showConfigDialog(context),
+                                ),
+                              ),
+                            ],
+                          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.rocket_launch,
-                        color: Color(0xFF38BDF8),
-                        size: 40,
-                      ),
-                    ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
+                    ),
 
-                    const SizedBox(height: 12),
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)],
-                      ).createShader(bounds),
-                      child: const Text(
-                        "ROBOT TEC EXPLORER",
+                    const SizedBox(height: 24),
+
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        "TECNOLÓGICO DE MONTERREY • ESP32 BLE CONTROLLER v1.0",
                         style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          color: Colors.white,
+                          color: Colors.white30,
+                          fontSize: 9,
+                          letterSpacing: 1.2,
                         ),
-                      ),
-                    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.3, end: 0),
-
-                    const SizedBox(height: 4),
-                    const Text(
-                      "CONTROL DE TANQUE ESP32 BLE",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        letterSpacing: 1.8,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 16),
-
-                // Connection Status Widget
-                const RobotStatusWidget(),
-
-                const Spacer(),
-
-                // Menu Buttons List
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    children: [
-                      _buildMenuButton(
-                        context: context,
-                        icon: Icons.bluetooth_searching,
-                        label: "CONECTAR ROBOT",
-                        subtitle: "Buscar y vincular TANQUE-ESP32",
-                        color: const Color(0xFF06B6D4),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const BluetoothScreen()),
-                        ),
-                      ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2, end: 0),
-
-                      const SizedBox(height: 12),
-
-                      _buildMenuButton(
-                        context: context,
-                        icon: Icons.gamepad,
-                        label: "COMENZAR MISIÓN",
-                        subtitle: "Control Joystick y misiones de campo",
-                        color: const Color(0xFF10B981),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ControlScreen()),
-                        ),
-                      ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.2, end: 0),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSmallButton(
-                              context: context,
-                              icon: Icons.emoji_events,
-                              label: "LOGROS",
-                              color: const Color(0xFFF59E0B),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const AchievementsScreen()),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildSmallButton(
-                              context: context,
-                              icon: Icons.flag,
-                              label: "MISIONES",
-                              color: const Color(0xFF8B5CF6),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const MissionsScreen()),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSmallButton(
-                              context: context,
-                              icon: Icons.groups,
-                              label: "COLABORADORES",
-                              color: const Color(0xFFEC4899),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const TeamScreen()),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildSmallButton(
-                              context: context,
-                              icon: Icons.settings,
-                              label: "CONFIGURACIÓN",
-                              color: const Color(0xFF64748B),
-                              onTap: () => _showConfigDialog(context),
-                            ),
-                          ),
-                        ],
-                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
-                    ],
-                  ),
-                ),
-
-                const Spacer(),
-
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    "TECNOLÓGICO DE MONTERREY • ESP32 BLE CONTROLLER v1.0",
-                    style: TextStyle(
-                      color: Colors.white30,
-                      fontSize: 9,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
