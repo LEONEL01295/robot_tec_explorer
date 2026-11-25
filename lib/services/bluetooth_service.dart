@@ -158,11 +158,17 @@ class RobotBluetoothService extends ChangeNotifier {
       notifyListeners();
 
       await stopScan();
-      // Format MAC address for WinBle (lowercase or uppercase without dashes)
-      String cleanAddr = address.trim().replaceAll('-', ':').toLowerCase();
-      await WinBle.connect(cleanAddr);
+      await WinBle.connect(address);
 
-      _connectedWinAddress = cleanAddr;
+      // Discover GATT services on Windows so Windows GATT handles are cached!
+      try {
+        await WinBle.discoverServices(address);
+        debugPrint("WinBle GATT services discovered on $address");
+      } catch (e) {
+        debugPrint("WinBle discoverServices note: $e");
+      }
+
+      _connectedWinAddress = address;
       _isConnected = true;
       _isConnecting = false;
       _rssi = rssiStr.isNotEmpty ? int.tryParse(rssiStr) ?? -55 : -55;
@@ -289,13 +295,23 @@ class RobotBluetoothService extends ChangeNotifier {
     if (_isWindows && _connectedWinAddress != null) {
       try {
         List<int> bytes = utf8.encode(command);
-        await WinBle.write(
-          address: _connectedWinAddress!,
-          service: targetServiceUuidStr,
-          characteristic: targetCharacteristicUuidStr,
-          data: Uint8List.fromList(bytes),
-          writeWithResponse: false,
-        );
+        try {
+          await WinBle.write(
+            address: _connectedWinAddress!,
+            service: targetServiceUuidStr,
+            characteristic: targetCharacteristicUuidStr,
+            data: Uint8List.fromList(bytes),
+            writeWithResponse: false,
+          );
+        } catch (_) {
+          await WinBle.write(
+            address: _connectedWinAddress!,
+            service: targetServiceUuidStr,
+            characteristic: targetCharacteristicUuidStr,
+            data: Uint8List.fromList(bytes),
+            writeWithResponse: true,
+          );
+        }
         debugPrint("Sent Windows BLE command: $command");
         return true;
       } catch (e) {
