@@ -60,6 +60,7 @@ class RobotBluetoothService extends ChangeNotifier {
     if (_isWindows) {
       try {
         await WinBle.initialize(serverPath: "");
+        _winScanSubscription?.cancel();
         _winScanSubscription = WinBle.scanStream.listen((device) {
           final exists = _windowsDevices.any((d) => d.address == device.address);
           if (!exists) {
@@ -95,6 +96,8 @@ class RobotBluetoothService extends ChangeNotifier {
       try {
         _windowsDevices.clear();
         notifyListeners();
+        WinBle.stopScanning();
+        await Future.delayed(const Duration(milliseconds: 100));
         WinBle.startScanning();
       } catch (e) {
         debugPrint("Error starting Windows BLE scan: $e");
@@ -138,26 +141,30 @@ class RobotBluetoothService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Connect on Windows
+  // Connect on Windows via BleDevice or raw Address
   Future<bool> connectWinDevice(BleDevice device) async {
+    return connectWinAddress(device.address, name: device.name, rssiStr: device.rssi);
+  }
+
+  Future<bool> connectWinAddress(String address, {String name = "TANQUE-ESP32", String rssiStr = "-50"}) async {
     try {
       _isConnecting = true;
       _isVirtualMode = false;
       notifyListeners();
 
       await stopScan();
-      await WinBle.connect(device.address);
+      await WinBle.connect(address);
 
-      _connectedWinAddress = device.address;
+      _connectedWinAddress = address;
       _isConnected = true;
       _isConnecting = false;
-      _rssi = device.rssi.isNotEmpty ? int.tryParse(device.rssi) ?? -60 : -60;
+      _rssi = rssiStr.isNotEmpty ? int.tryParse(rssiStr) ?? -55 : -55;
       notifyListeners();
 
       await sendCommand("detener");
       return true;
     } catch (e) {
-      debugPrint("Error connecting on Windows: $e");
+      debugPrint("Error connecting on Windows address $address: $e");
       _isConnecting = false;
       _isConnected = false;
       notifyListeners();

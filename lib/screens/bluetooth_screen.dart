@@ -14,6 +14,58 @@ class BluetoothScreen extends StatefulWidget {
 class _BluetoothScreenState extends State<BluetoothScreen> {
   bool get _isWindows => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
+  void _showManualAddressDialog(BuildContext context, RobotBluetoothService ble) {
+    final controller = TextEditingController(text: "24:6f:28:aa:bb:cc");
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        title: const Text("Conexión Directa Bluetooth ESP32", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Ingresa la dirección MAC Bluetooth de tu ESP32:", style: TextStyle(color: Colors.white70, fontSize: 11)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              decoration: InputDecoration(
+                hintText: "Ejemplo: 24:6f:28:aa:bb:cc",
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+                filled: true,
+                fillColor: Colors.white10,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("CANCELAR", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              String addr = controller.text.trim();
+              if (addr.isNotEmpty) {
+                bool ok = await ble.connectWinAddress(addr);
+                if (ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Conectado a ESP32 ($addr)"), backgroundColor: const Color(0xFF10B981)),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            child: const Text("CONECTAR FÍSICO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -215,6 +267,22 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 onPressed: () {
+                                  _showManualAddressDialog(context, ble);
+                                },
+                                icon: const Icon(Icons.bluetooth_connected, color: Colors.white, size: 18),
+                                label: const Text(
+                                  "CONECTAR POR DIRECCIÓN MAC BLUETOOTH REAL",
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () {
                                   ble.connectVirtualDevice();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -225,7 +293,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                                 },
                                 icon: const Icon(Icons.flash_on, color: Colors.black, size: 18),
                                 label: const Text(
-                                  "CONECTAR TANQUE ESP32 (MODO MOCK / WINDOWS)",
+                                  "CONECTAR TANQUE ESP32 (MODO SIMULACIÓN / MOCK)",
                                   style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
                                 ),
                                 style: ElevatedButton.styleFrom(
