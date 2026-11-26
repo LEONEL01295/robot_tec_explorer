@@ -61,14 +61,6 @@ class RobotBluetoothService extends ChangeNotifier {
     if (_isWindows) {
       try {
         await WinBle.initialize(serverPath: "");
-        _winScanSubscription?.cancel();
-        _winScanSubscription = WinBle.scanStream.listen((device) {
-          final exists = _windowsDevices.any((d) => d.address == device.address);
-          if (!exists) {
-            _windowsDevices.add(device);
-            notifyListeners();
-          }
-        });
       } catch (e) {
         debugPrint("WinBle initialize error: $e");
       }
@@ -97,8 +89,19 @@ class RobotBluetoothService extends ChangeNotifier {
       try {
         _windowsDevices.clear();
         notifyListeners();
+
+        _winScanSubscription?.cancel();
+        _winScanSubscription = WinBle.scanStream.listen((device) {
+          debugPrint("WinBle discovered: ${device.name} [${device.address}]");
+          final exists = _windowsDevices.any((d) => d.address.toLowerCase() == device.address.toLowerCase());
+          if (!exists) {
+            _windowsDevices.add(device);
+            notifyListeners();
+          }
+        });
+
         WinBle.stopScanning();
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 150));
         WinBle.startScanning();
       } catch (e) {
         debugPrint("Error starting Windows BLE scan: $e");
@@ -158,8 +161,7 @@ class RobotBluetoothService extends ChangeNotifier {
       notifyListeners();
 
       await stopScan();
-      
-      // Attempt connection with retry
+
       bool success = false;
       for (int i = 0; i < 3; i++) {
         try {
