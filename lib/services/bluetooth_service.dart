@@ -158,7 +158,23 @@ class RobotBluetoothService extends ChangeNotifier {
       notifyListeners();
 
       await stopScan();
-      await WinBle.connect(address);
+      
+      // Attempt connection with retry
+      bool success = false;
+      for (int i = 0; i < 3; i++) {
+        try {
+          await WinBle.connect(address);
+          success = true;
+          break;
+        } catch (e) {
+          debugPrint("Attempt ${i + 1} connecting to $address failed: $e");
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+
+      if (!success) {
+        throw Exception("Could not establish connection to $address after 3 attempts.");
+      }
 
       // Discover GATT services on Windows so Windows GATT handles are cached!
       try {
