@@ -19,7 +19,7 @@ class _ControlScreenState extends State<ControlScreen> {
   final List<String> _commandLog = [];
   final FocusNode _focusNode = FocusNode();
   StreamSubscription<GamepadEvent>? _gamepadSubscription;
-  String _activeGamepadName = "Buscando mando Xbox/GameSir...";
+  String _activeGamepadName = "Buscando mando Xbox 360...";
   bool _gamepadConnected = false;
   String _lastGamepadDirection = "detener";
 
@@ -35,7 +35,7 @@ class _ControlScreenState extends State<ControlScreen> {
         if (mounted) {
           setState(() {
             _gamepadConnected = true;
-            _activeGamepadName = "Mando Xbox (${event.gamepadId})";
+            _activeGamepadName = "Xbox 360 Controller HHDZ-360-1 (${event.gamepadId})";
           });
           _handleGamepadEvent(event);
         }
@@ -50,14 +50,13 @@ class _ControlScreenState extends State<ControlScreen> {
   void _handleGamepadEvent(GamepadEvent event) {
     final key = event.key.toLowerCase();
     final double rawVal = event.value.toDouble();
-    // Normalize value: clamp between -1.0 and 1.0 (dividing by 32768 only if truly in 16-bit range > 1.5)
     final double value = (rawVal.abs() > 1.5) ? (rawVal / 32768.0) : rawVal.clamp(-1.0, 1.0);
 
-    debugPrint("XBOX EVENT: key=$key, rawVal=$rawVal, val=$value");
+    debugPrint("XBOX 360 EVENT: key=$key, rawVal=$rawVal, val=$value");
 
     String targetCmd = "detener";
 
-    // 1. D-Pad Direct Press
+    // 1. D-Pad Direct Buttons
     if (key == "dpadup") {
       targetCmd = value > 0.5 ? "adelante" : "detener";
     } else if (key == "dpaddown") {
@@ -67,8 +66,8 @@ class _ControlScreenState extends State<ControlScreen> {
     } else if (key == "dpadright") {
       targetCmd = value > 0.5 ? "derecha" : "detener";
     }
-    // 2. Analog Sticks (leftthumbsticky / leftthumbstickx / axis-1 / axis-0)
-    else if (key == "leftthumbsticky" || key.contains("vertical") || key == "axis-1" || key == "axis-3") {
+    // 2. Left & Right Analog Sticks (leftthumbsticky / rightthumbsticky / leftthumbstickx / rightthumbstickx)
+    else if (key.contains("thumbsticky") || key.contains("vertical") || key == "axis-1" || key == "axis-3") {
       if (value < -0.25) {
         targetCmd = "adelante";
       } else if (value > 0.25) {
@@ -76,7 +75,7 @@ class _ControlScreenState extends State<ControlScreen> {
       } else {
         targetCmd = "detener";
       }
-    } else if (key == "leftthumbstickx" || key.contains("horizontal") || key == "axis-0" || key == "axis-2") {
+    } else if (key.contains("thumbstickx") || key.contains("horizontal") || key == "axis-0" || key == "axis-2") {
       if (value < -0.25) {
         targetCmd = "izquierda";
       } else if (value > 0.25) {
@@ -85,7 +84,7 @@ class _ControlScreenState extends State<ControlScreen> {
         targetCmd = "detener";
       }
     }
-    // 3. ABXY Buttons (key=a, key=b, key=x, key=y)
+    // 3. ABXY Buttons (Green A, Red B, Blue X, Yellow Y)
     else if (value > 0.5) {
       if (key == "a" || key == "button-0" || key.contains("south")) {
         targetCmd = "adelante";
@@ -254,7 +253,7 @@ class _ControlScreenState extends State<ControlScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "MANDO XBOX / GAMESIR KALEID",
+                                "MANDO XBOX 360 / GAMESIR",
                                 style: TextStyle(
                                   color: _gamepadConnected ? const Color(0xFF00E5FF) : Colors.white70,
                                   fontWeight: FontWeight.bold,
