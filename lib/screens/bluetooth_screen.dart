@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:win_ble/win_ble.dart';
+import 'package:universal_ble/universal_ble.dart';
 import '../services/bluetooth_service.dart';
 
 class BluetoothScreen extends StatefulWidget {
@@ -13,58 +13,6 @@ class BluetoothScreen extends StatefulWidget {
 
 class _BluetoothScreenState extends State<BluetoothScreen> {
   bool get _isWindows => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-
-  void _showManualAddressDialog(BuildContext context, RobotBluetoothService ble) {
-    final controller = TextEditingController(text: RobotBluetoothService.targetMacAddress);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0F172A),
-        title: const Text("Conexión Directa Bluetooth ESP32", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Dirección MAC Bluetooth del Tanque ESP32:", style: TextStyle(color: Colors.white70, fontSize: 11)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: "Ejemplo: F4:65:0B:47:05:CA",
-                hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("CANCELAR", style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              String addr = controller.text.trim();
-              if (addr.isNotEmpty) {
-                bool ok = await ble.connectWinAddress(addr);
-                if (ok && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Conectado a ESP32 ($addr)"), backgroundColor: const Color(0xFF10B981)),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-            child: const Text("CONECTAR FÍSICO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   void initState() {
@@ -90,11 +38,6 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_location_alt, color: Color(0xFF10B981)),
-            tooltip: "Ingresar MAC Manual",
-            onPressed: () => _showManualAddressDialog(context, RobotBluetoothService.instance),
-          ),
           ListenableBuilder(
             listenable: RobotBluetoothService.instance,
             builder: (context, _) {
@@ -187,7 +130,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                               maxLines: 1,
                             ),
                             Text(
-                              isVirtualMode ? "VIRTUAL_MAC_00:11:22" : (connectedDevice?.remoteId.str ?? RobotBluetoothService.targetMacAddress),
+                              isVirtualMode ? "VIRTUAL_MAC_00:11:22" : RobotBluetoothService.targetMacAddress,
                               style: const TextStyle(color: Colors.white54, fontSize: 10),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -336,10 +279,11 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
       itemCount: devices.length,
       itemBuilder: (context, index) {
         final device = devices[index];
-        final name = device.name.isNotEmpty ? device.name : "Dispositivo Bluetooth (${device.address})";
+        final rawName = device.name ?? "";
+        final name = rawName.isNotEmpty ? rawName : "Dispositivo Bluetooth (${device.deviceId})";
         final isTarget = name.toUpperCase().contains("TANQUE") ||
             name.toUpperCase().contains("ESP32") ||
-            device.address.toUpperCase() == RobotBluetoothService.targetMacAddress;
+            device.deviceId.toUpperCase() == RobotBluetoothService.targetMacAddress;
 
         return Card(
           color: isTarget
@@ -385,7 +329,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                         maxLines: 1,
                       ),
                       Text(
-                        "${device.address} • ${device.rssi} dBm",
+                        device.deviceId,
                         style: const TextStyle(color: Colors.white38, fontSize: 10),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -443,9 +387,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
         final result = results[index];
         final device = result.device;
         final name = device.platformName.isNotEmpty ? device.platformName : "Dispositivo Desconocido";
-        final isTarget = name.toUpperCase().contains("TANQUE") ||
-            name.toUpperCase().contains("ESP32") ||
-            device.remoteId.str.toUpperCase() == RobotBluetoothService.targetMacAddress;
+        final isTarget = name.toUpperCase().contains("TANQUE") || name.toUpperCase().contains("ESP32");
         final isThisConnected = connectedDevice?.remoteId == device.remoteId;
 
         return Card(

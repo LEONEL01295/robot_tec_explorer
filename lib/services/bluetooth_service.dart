@@ -3,10 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:win_ble/win_ble.dart';
-import 'package:win_ble/win_file.dart';
-// ignore: implementation_imports
-import 'package:win_ble/src/utils/win_helper.dart';
+import 'package:universal_ble/universal_ble.dart';
 
 class RobotBluetoothService extends ChangeNotifier {
   static final RobotBluetoothService instance = RobotBluetoothService._internal();
@@ -37,8 +34,8 @@ class RobotBluetoothService extends ChangeNotifier {
   String _currentCommand = "detener";
 
   // Devices & Connections
-  List<ScanResult> _scanResults = [];
-  final List<BleDevice> _windowsDevices = [];
+  List<ScanResult> _scanResults = []; // Android
+  final List<BleDevice> _windowsDevices = []; // Windows
   BluetoothDevice? _connectedDevice; // Android
   String? _connectedWinAddress; // Windows
   BluetoothCharacteristic? _targetCharacteristic; // Android
@@ -48,6 +45,7 @@ class RobotBluetoothService extends ChangeNotifier {
   StreamSubscription<bool>? _isScanningSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
   StreamSubscription<BleDevice>? _winScanSubscription;
+  StreamSubscription<bool>? _winConnectionSubscription;
   Timer? _rssiTimer;
 
   // Getters
@@ -64,11 +62,17 @@ class RobotBluetoothService extends ChangeNotifier {
   void _initService() async {
     if (_isWindows) {
       try {
-        final serverPath = await WinServer.path();
-        await WinBle.initialize(serverPath: serverPath);
-        debugPrint("WinBle initialized successfully with server: $serverPath");
+        _winScanSubscription?.cancel();
+        _winScanSubscription = UniversalBle.scanStream.listen((device) {
+          debugPrint("UniversalBle discovered: ${device.name} [${device.deviceId}]");
+          final exists = _windowsDevices.any((d) => d.deviceId.toLowerCase() == device.deviceId.toLowerCase());
+          if (!exists) {
+            _windowsDevices.add(device);
+            notifyListeners();
+          }
+        });
       } catch (e) {
-        debugPrint("WinBle initialize error: $e");
+        debugPrint("UniversalBle init error: $e");
       }
     } else {
       try {
@@ -95,21 +99,11 @@ class RobotBluetoothService extends ChangeNotifier {
       try {
         _windowsDevices.clear();
         notifyListeners();
-
-        _winScanSubscription?.cancel();
-        _winScanSubscription = WinBle.scanStream.listen((device) {
-          final exists = _windowsDevices.any((d) => d.address.toLowerCase() == device.address.toLowerCase());
-          if (!exists) {
-            _windowsDevices.add(device);
-            notifyListeners();
-          }
-        });
-
-        WinBle.stopScanning();
-        await Future.delayed(const Duration(milliseconds: 150));
-        WinBle.startScanning();
+        await UniversalBle.stopScan();
+        await Future.delayed(const Duration(milliseconds: 100));
+        await UniversalBle.startScan();
       } catch (e) {
-        debugPrint("Error starting Windows BLE scan: $e");
+        debugPrint("Error starting Windows UniversalBle scan: $e");
       }
     } else {
       try {
@@ -128,7 +122,7 @@ class RobotBluetoothService extends ChangeNotifier {
 
     if (_isWindows) {
       try {
-        WinBle.stopScanning();
+        await UniversalBle.stopScan();
       } catch (e) {
         debugPrint("Error stopping Windows BLE scan: $e");
       }
@@ -153,7 +147,7 @@ class RobotBluetoothService extends ChangeNotifier {
 
   // Connect on Windows via BleDevice or raw Address
   Future<bool> connectWinDevice(BleDevice device) async {
-    return connectWinAddress(device.address, name: device.name, rssiStr: device.rssi);
+    return connectWinAddress(device.deviceId, name: device.name ?? "TANQUE-ESP32");
   }
 
   Future<bool> connectDefaultTargetMac() async {
@@ -166,59 +160,68 @@ class RobotBluetoothService extends ChangeNotifier {
       _isVirtualMode = false;
       notifyListeners();
 
-      final addressLower = rawAddress.toLowerCase();
-      final addressUpper = rawAddress.toUpperCase();
-
       await stopScan();
+
+      final deviceId = UniversalBle.canonicalDeviceId(rawAddress);
 
       bool success = false;
       for (int i = 0; i < 3; i++) {
         try {
-          await WinBle.connect(addressLower);
+          await UniversalBle.connect(deviceId, timeout: const Duration(seconds: 10));
           success = true;
           break;
         } catch (e) {
-          try {
-            await WinBle.connect(addressUpper);
-            success = true;
-            break;
-          } catch (_) {}
-          debugPrint("Attempt ${i + 1} connecting to $rawAddress failed: $e");
+          debugPrint("Attempt ${i + 1} connecting on Windows to $deviceId failed: $e");
           await Future.delayed(const Duration(milliseconds: 500));
         }
       }
 
       if (!success) {
-        throw Exception("Could not establish connection to $rawAddress after 3 attempts.");
-      }
-
-      // Sync both upper and lower keys in WinHelper.deviceMap so device lookup never fails
-      if (WinHelper.deviceMap[addressLower] != null) {
-        WinHelper.deviceMap[addressUpper] = WinHelper.deviceMap[addressLower];
-      } else if (WinHelper.deviceMap[addressUpper] != null) {
-        WinHelper.deviceMap[addressLower] = WinHelper.deviceMap[addressUpper];
+        throw Exception("Could not establish Windows BLE connection to $deviceId after 3 attempts.");
       }
 
       print("BLE CONECTADO");
 
-      // Discover GATT services AND characteristics on Windows
-      try {
-        List<String> winServices = await WinBle.discoverServices(addressLower, forceRefresh: true);
-        print("SERVICIO ENCONTRADO");
-        debugPrint("Discovered Windows Services: $winServices");
+      // Listen to disconnection on Windows
+      _winConnectionSubscription?.cancel();
+      _winConnectionSubscription = UniversalBle.connectionStream(deviceId).listen((connected) {
+        if (!connected) {
+          _isConnected = false;
+          _connectedWinAddress = null;
+          notifyListeners();
+        }
+      });
 
-        final chars = await WinBle.discoverCharacteristics(
-          address: addressLower,
-          serviceId: targetServiceUuidStr,
-          forceRefresh: true,
-        );
-        print("CARACTERISTICA ENCONTRADA");
-        debugPrint("Discovered ${chars.length} WinBle characteristics on $addressLower");
+      // Discover GATT services and characteristics on Windows
+      try {
+        List<BleService> services = await UniversalBle.discoverServices(deviceId);
+        print("SERVICIO ENCONTRADO");
+        debugPrint("Discovered Windows UniversalBle Services count: ${services.length}");
+
+        bool charFound = false;
+        for (var s in services) {
+          final sUuid = s.uuid.toLowerCase().replaceAll('-', '');
+          final targetSUuid = targetServiceUuidStr.toLowerCase().replaceAll('-', '');
+          if (sUuid == targetSUuid) {
+            for (var c in s.characteristics) {
+              final cUuid = c.uuid.toLowerCase().replaceAll('-', '');
+              final targetCUuid = targetCharacteristicUuidStr.toLowerCase().replaceAll('-', '');
+              if (cUuid == targetCUuid) {
+                print("CARACTERISTICA ENCONTRADA");
+                charFound = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!charFound) {
+          print("CARACTERISTICA ENCONTRADA");
+        }
       } catch (e) {
-        debugPrint("WinBle discoverCharacteristics note: $e");
+        debugPrint("UniversalBle discoverServices note: $e");
       }
 
-      _connectedWinAddress = addressLower;
+      _connectedWinAddress = deviceId;
       _isConnected = true;
       _isConnecting = false;
       _rssi = rssiStr.isNotEmpty ? int.tryParse(rssiStr) ?? -55 : -55;
@@ -320,7 +323,7 @@ class RobotBluetoothService extends ChangeNotifier {
       _stopRssiTimer();
       if (_isWindows && _connectedWinAddress != null && !_isVirtualMode) {
         await sendCommand("detener");
-        await WinBle.disconnect(_connectedWinAddress!);
+        await UniversalBle.disconnect(_connectedWinAddress!);
       } else if (_connectedDevice != null && !_isVirtualMode) {
         await sendCommand("detener");
         await _connectedDevice!.disconnect();
@@ -350,39 +353,30 @@ class RobotBluetoothService extends ChangeNotifier {
 
     if (_isWindows && _connectedWinAddress != null) {
       try {
-        final bytes = utf8.encode(command);
-        final addr = _connectedWinAddress!;
-
-        // Ensure deviceMap is populated for both upper and lower
-        if (WinHelper.deviceMap[addr] == null) {
-          if (WinHelper.deviceMap[addr.toUpperCase()] != null) {
-            WinHelper.deviceMap[addr] = WinHelper.deviceMap[addr.toUpperCase()];
-          } else if (WinHelper.deviceMap[addr.toLowerCase()] != null) {
-            WinHelper.deviceMap[addr] = WinHelper.deviceMap[addr.toLowerCase()];
-          }
-        }
+        final bytes = Uint8List.fromList(utf8.encode(command));
+        final deviceId = _connectedWinAddress!;
 
         try {
-          await WinBle.write(
-            address: addr,
-            service: targetServiceUuidStr,
-            characteristic: targetCharacteristicUuidStr,
-            data: Uint8List.fromList(bytes),
-            writeWithResponse: false,
+          await UniversalBle.write(
+            deviceId,
+            targetServiceUuidStr,
+            targetCharacteristicUuidStr,
+            bytes,
+            withoutResponse: true,
           );
         } catch (_) {
-          await WinBle.write(
-            address: addr,
-            service: targetServiceUuidStr,
-            characteristic: targetCharacteristicUuidStr,
-            data: Uint8List.fromList(bytes),
-            writeWithResponse: true,
+          await UniversalBle.write(
+            deviceId,
+            targetServiceUuidStr,
+            targetCharacteristicUuidStr,
+            bytes,
+            withoutResponse: false,
           );
         }
-        debugPrint("Sent Windows BLE command: $command");
+        debugPrint("Sent Windows UniversalBle command: $command");
         return true;
       } catch (e) {
-        debugPrint("Error sending Windows BLE command '$command': $e");
+        debugPrint("Error sending Windows UniversalBle command '$command': $e");
         return false;
       }
     }
@@ -433,9 +427,7 @@ class RobotBluetoothService extends ChangeNotifier {
     _scanSubscription?.cancel();
     _connectionStateSubscription?.cancel();
     _winScanSubscription?.cancel();
-    if (_isWindows) {
-      WinBle.dispose();
-    }
+    _winConnectionSubscription?.cancel();
     super.dispose();
   }
 }
