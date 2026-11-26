@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -97,7 +98,6 @@ class RobotBluetoothService extends ChangeNotifier {
 
         _winScanSubscription?.cancel();
         _winScanSubscription = WinBle.scanStream.listen((device) {
-          debugPrint("WinBle discovered: ${device.name} [${device.address}]");
           final exists = _windowsDevices.any((d) => d.address.toLowerCase() == device.address.toLowerCase());
           if (!exists) {
             _windowsDevices.add(device);
@@ -147,6 +147,7 @@ class RobotBluetoothService extends ChangeNotifier {
     _isConnecting = false;
     _rssi = -48;
     _currentCommand = "detener";
+    print("BLE CONECTADO (MODO SIMULACIÓN)");
     notifyListeners();
   }
 
@@ -198,6 +199,25 @@ class RobotBluetoothService extends ChangeNotifier {
         WinHelper.deviceMap[addressLower] = WinHelper.deviceMap[addressUpper];
       }
 
+      print("BLE CONECTADO");
+
+      // Discover GATT services AND characteristics on Windows
+      try {
+        List<String> winServices = await WinBle.discoverServices(addressLower, forceRefresh: true);
+        print("SERVICIO ENCONTRADO");
+        debugPrint("Discovered Windows Services: $winServices");
+
+        final chars = await WinBle.discoverCharacteristics(
+          address: addressLower,
+          serviceId: targetServiceUuidStr,
+          forceRefresh: true,
+        );
+        print("CARACTERISTICA ENCONTRADA");
+        debugPrint("Discovered ${chars.length} WinBle characteristics on $addressLower");
+      } catch (e) {
+        debugPrint("WinBle discoverCharacteristics note: $e");
+      }
+
       _connectedWinAddress = addressLower;
       _isConnected = true;
       _isConnecting = false;
@@ -243,6 +263,8 @@ class RobotBluetoothService extends ChangeNotifier {
       _connectedDevice = device;
       _isConnected = true;
 
+      print("BLE CONECTADO");
+
       List<BluetoothService> services = await device.discoverServices();
       BluetoothCharacteristic? foundChar;
 
@@ -250,10 +272,12 @@ class RobotBluetoothService extends ChangeNotifier {
         String serviceUuid = service.uuid.toString().toLowerCase();
         if (serviceUuid == targetServiceUuidStr.toLowerCase() ||
             serviceUuid.replaceAll('-', '') == targetServiceUuidStr.replaceAll('-', '').toLowerCase()) {
+          print("SERVICIO ENCONTRADO");
           for (var char in service.characteristics) {
             String charUuid = char.uuid.toString().toLowerCase();
             if (charUuid == targetCharacteristicUuidStr.toLowerCase() ||
                 charUuid.replaceAll('-', '') == targetCharacteristicUuidStr.replaceAll('-', '').toLowerCase()) {
+              print("CARACTERISTICA ENCONTRADA");
               foundChar = char;
               break;
             }
@@ -317,6 +341,8 @@ class RobotBluetoothService extends ChangeNotifier {
     _currentCommand = command;
     notifyListeners();
 
+    print("ENVIANDO: $command");
+
     if (_isVirtualMode) {
       debugPrint("Virtual ESP32 Command: $command");
       return true;
@@ -324,9 +350,9 @@ class RobotBluetoothService extends ChangeNotifier {
 
     if (_isWindows && _connectedWinAddress != null) {
       try {
-        List<int> bytes = utf8.encode(command);
+        final bytes = utf8.encode(command);
         final addr = _connectedWinAddress!;
-        
+
         // Ensure deviceMap is populated for both upper and lower
         if (WinHelper.deviceMap[addr] == null) {
           if (WinHelper.deviceMap[addr.toUpperCase()] != null) {
@@ -372,7 +398,7 @@ class RobotBluetoothService extends ChangeNotifier {
     }
 
     try {
-      List<int> bytes = utf8.encode(command);
+      final bytes = utf8.encode(command);
       bool withoutResponse = _targetCharacteristic!.properties.writeWithoutResponse;
       await _targetCharacteristic!.write(bytes, withoutResponse: withoutResponse);
       debugPrint("Sent BLE command: $command");
