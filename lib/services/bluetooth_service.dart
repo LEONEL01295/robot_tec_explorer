@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
+// ignore: implementation_imports
+import 'package:win_ble/src/utils/win_helper.dart';
 
 class RobotBluetoothService extends ChangeNotifier {
   static final RobotBluetoothService instance = RobotBluetoothService._internal();
@@ -157,39 +159,46 @@ class RobotBluetoothService extends ChangeNotifier {
     return connectWinAddress(targetMacAddress, name: targetDeviceName);
   }
 
-  Future<bool> connectWinAddress(String address, {String name = "TANQUE-ESP32", String rssiStr = "-50"}) async {
+  Future<bool> connectWinAddress(String rawAddress, {String name = "TANQUE-ESP32", String rssiStr = "-50"}) async {
     try {
       _isConnecting = true;
       _isVirtualMode = false;
       notifyListeners();
+
+      final addressLower = rawAddress.toLowerCase();
+      final addressUpper = rawAddress.toUpperCase();
 
       await stopScan();
 
       bool success = false;
       for (int i = 0; i < 3; i++) {
         try {
-          await WinBle.connect(address);
+          await WinBle.connect(addressLower);
           success = true;
           break;
         } catch (e) {
-          debugPrint("Attempt ${i + 1} connecting to $address failed: $e");
+          try {
+            await WinBle.connect(addressUpper);
+            success = true;
+            break;
+          } catch (_) {}
+          debugPrint("Attempt ${i + 1} connecting to $rawAddress failed: $e");
           await Future.delayed(const Duration(milliseconds: 500));
         }
       }
 
       if (!success) {
-        throw Exception("Could not establish connection to $address after 3 attempts.");
+        throw Exception("Could not establish connection to $rawAddress after 3 attempts.");
       }
 
-      // Discover GATT services on Windows so Windows GATT handles are cached!
-      try {
-        await WinBle.discoverServices(address);
-        debugPrint("WinBle GATT services discovered on $address");
-      } catch (e) {
-        debugPrint("WinBle discoverServices note: $e");
+      // Sync both upper and lower keys in WinHelper.deviceMap so device lookup never fails
+      if (WinHelper.deviceMap[addressLower] != null) {
+        WinHelper.deviceMap[addressUpper] = WinHelper.deviceMap[addressLower];
+      } else if (WinHelper.deviceMap[addressUpper] != null) {
+        WinHelper.deviceMap[addressLower] = WinHelper.deviceMap[addressUpper];
       }
 
-      _connectedWinAddress = address;
+      _connectedWinAddress = addressLower;
       _isConnected = true;
       _isConnecting = false;
       _rssi = rssiStr.isNotEmpty ? int.tryParse(rssiStr) ?? -55 : -55;
@@ -198,7 +207,7 @@ class RobotBluetoothService extends ChangeNotifier {
       await sendCommand("detener");
       return true;
     } catch (e) {
-      debugPrint("Error connecting on Windows address $address: $e");
+      debugPrint("Error connecting on Windows address $rawAddress: $e");
       _isConnecting = false;
       _isConnected = false;
       notifyListeners();
@@ -316,9 +325,20 @@ class RobotBluetoothService extends ChangeNotifier {
     if (_isWindows && _connectedWinAddress != null) {
       try {
         List<int> bytes = utf8.encode(command);
+        final addr = _connectedWinAddress!;
+        
+        // Ensure deviceMap is populated for both upper and lower
+        if (WinHelper.deviceMap[addr] == null) {
+          if (WinHelper.deviceMap[addr.toUpperCase()] != null) {
+            WinHelper.deviceMap[addr] = WinHelper.deviceMap[addr.toUpperCase()];
+          } else if (WinHelper.deviceMap[addr.toLowerCase()] != null) {
+            WinHelper.deviceMap[addr] = WinHelper.deviceMap[addr.toLowerCase()];
+          }
+        }
+
         try {
           await WinBle.write(
-            address: _connectedWinAddress!,
+            address: addr,
             service: targetServiceUuidStr,
             characteristic: targetCharacteristicUuidStr,
             data: Uint8List.fromList(bytes),
@@ -326,7 +346,7 @@ class RobotBluetoothService extends ChangeNotifier {
           );
         } catch (_) {
           await WinBle.write(
-            address: _connectedWinAddress!,
+            address: addr,
             service: targetServiceUuidStr,
             characteristic: targetCharacteristicUuidStr,
             data: Uint8List.fromList(bytes),
