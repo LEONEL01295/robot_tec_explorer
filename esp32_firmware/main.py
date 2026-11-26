@@ -78,19 +78,13 @@ DEVICE_NAME = "TANQUE-ESP32"
 
 def advertising_payload(name="TANQUE-ESP32"):
     payload = bytearray()
-
-    # 1. Flags (0x01)
     payload += bytes([0x02, 0x01, 0x06])
-
-    # 2. Complete Local Name (0x09)
     name_bytes = name.encode('utf-8')
     payload += bytes([len(name_bytes) + 1, 0x09]) + name_bytes
-
     return payload
 
 def resp_payload(services=None):
     payload = bytearray()
-    # 3. 128-bit Service UUIDs (0x07)
     if services:
         for uuid in services:
             b = bytes(uuid)
@@ -138,7 +132,7 @@ def ejecutar_comando(cmd):
 def ble_irq(event, data):
     if event == _IRQ_CENTRAL_CONNECT:
         conn_handle, addr_type, addr = data
-        print("📡 ¡Dispositivo conectado exitosamente!")
+        print("📡 Dispositivo conectado exitosamente")
 
     elif event == _IRQ_CENTRAL_DISCONNECT:
         conn_handle, addr_type, addr = data
