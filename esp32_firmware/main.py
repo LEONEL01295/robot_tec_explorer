@@ -1,6 +1,7 @@
 from machine import Pin
 import bluetooth
 import time
+import gc
 
 # ==================================
 # PINES DEL DRIVER L298N / ESP32
@@ -154,7 +155,7 @@ def ble_irq(event, data):
 ble.irq(ble_irq)
 
 # ==================================
-# BUCLE PRINCIPAL
+# BUCLE PRINCIPAL CON LIMPIEZA RAM
 # ==================================
 
 print("================================")
@@ -163,4 +164,5 @@ print("Nombre BLE:", DEVICE_NAME)
 print("================================")
 
 while True:
+    gc.collect()  # Liberar memoria RAM de MicroPython automáticamente
     time.sleep_ms(100)
