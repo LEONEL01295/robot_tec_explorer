@@ -8,7 +8,6 @@ import time
 
 IN1 = Pin(13, Pin.OUT)
 IN2 = Pin(12, Pin.OUT)
-
 IN3 = Pin(14, Pin.OUT)
 IN4 = Pin(27, Pin.OUT)
 
@@ -80,19 +79,30 @@ DEVICE_NAME = "TANQUE-ESP32"
 def advertising_payload(name="TANQUE-ESP32"):
     payload = bytearray()
 
-    # Flags: General Discoverable Mode (0x06)
+    # 1. Flags (0x01)
     payload += bytes([0x02, 0x01, 0x06])
 
-    # Name: Complete Local Name (0x09)
+    # 2. Complete Local Name (0x09)
     name_bytes = name.encode('utf-8')
     payload += bytes([len(name_bytes) + 1, 0x09]) + name_bytes
 
     return payload
 
+def resp_payload(services=None):
+    payload = bytearray()
+    # 3. 128-bit Service UUIDs (0x07)
+    if services:
+        for uuid in services:
+            b = bytes(uuid)
+            payload += bytes([len(b) + 1, 0x07]) + b
+    return payload
+
 def iniciar_advertising():
     try:
-        ble.gap_advertise(100000, advertising_payload(DEVICE_NAME), connectable=True)
-        print("✅ Publicando BLE activo como:", DEVICE_NAME)
+        adv = advertising_payload(DEVICE_NAME)
+        resp = resp_payload([SERVICE_UUID])
+        ble.gap_advertise(100000, adv_data=adv, resp_data=resp, connectable=True)
+        print("✅ Publicando BLE activo con UUID como:", DEVICE_NAME)
     except Exception as e:
         print("❌ Error al iniciar advertising BLE:", e)
 
@@ -103,8 +113,10 @@ iniciar_advertising()
 # ==================================
 
 def ejecutar_comando(cmd):
+    if not cmd:
+        return
     cmd = cmd.strip().lower()
-    print("CMD:", cmd)
+    print("▶ COMANDO RECIBIDO:", cmd)
 
     if cmd == "adelante":
         adelante()
@@ -126,13 +138,12 @@ def ejecutar_comando(cmd):
 def ble_irq(event, data):
     if event == _IRQ_CENTRAL_CONNECT:
         conn_handle, addr_type, addr = data
-        print("📡 Dispositivo conectado exitosamente")
+        print("📡 ¡Dispositivo conectado exitosamente!")
 
     elif event == _IRQ_CENTRAL_DISCONNECT:
         conn_handle, addr_type, addr = data
         print("🔌 Dispositivo desconectado -> Deteniendo motores")
         detener()
-        # Volver a anunciar BLE inmediatamente
         iniciar_advertising()
 
     elif event == _IRQ_GATTS_WRITE:
@@ -140,10 +151,10 @@ def ble_irq(event, data):
         try:
             raw = ble.gatts_read(value_handle)
             if raw:
-                mensaje = raw.decode().strip()
+                mensaje = raw.decode('utf-8').strip()
                 ejecutar_comando(mensaje)
         except Exception as e:
-            print("ERROR BLE:", e)
+            print("ERROR BLE AL LEER:", e)
             detener()
 
 ble.irq(ble_irq)
