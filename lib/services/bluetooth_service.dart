@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:win_ble/win_ble.dart';
+import 'package:win_ble/win_file.dart';
 
 class RobotBluetoothService extends ChangeNotifier {
   static final RobotBluetoothService instance = RobotBluetoothService._internal();
@@ -60,7 +61,9 @@ class RobotBluetoothService extends ChangeNotifier {
   void _initService() async {
     if (_isWindows) {
       try {
-        await WinBle.initialize(serverPath: "");
+        final serverPath = await WinServer.path();
+        await WinBle.initialize(serverPath: serverPath);
+        debugPrint("WinBle initialized successfully with server: $serverPath");
       } catch (e) {
         debugPrint("WinBle initialize error: $e");
       }
