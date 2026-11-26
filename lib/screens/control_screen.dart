@@ -35,7 +35,7 @@ class _ControlScreenState extends State<ControlScreen> {
         if (mounted) {
           setState(() {
             _gamepadConnected = true;
-            _activeGamepadName = "GameSir / Xbox (${event.gamepadId})";
+            _activeGamepadName = "Mando Xbox (${event.gamepadId})";
           });
           _handleGamepadEvent(event);
         }
@@ -50,15 +50,25 @@ class _ControlScreenState extends State<ControlScreen> {
   void _handleGamepadEvent(GamepadEvent event) {
     final key = event.key.toLowerCase();
     final double rawVal = event.value.toDouble();
-    // Normalize value if range is -32768..32767
-    final double value = (rawVal.abs() > 1.0) ? (rawVal / 32768.0) : rawVal;
+    // Normalize value: clamp between -1.0 and 1.0 (dividing by 32768 only if truly in 16-bit range > 1.5)
+    final double value = (rawVal.abs() > 1.5) ? (rawVal / 32768.0) : rawVal.clamp(-1.0, 1.0);
 
-    debugPrint("RAW GAMEPAD EVENT: key=$key, rawVal=$rawVal, val=$value");
+    debugPrint("XBOX EVENT: key=$key, rawVal=$rawVal, val=$value");
 
     String targetCmd = "detener";
 
-    // Axis 1 / Y-axis / Vertical Stick / D-Pad Up/Down
-    if (key.contains("y") || key.contains("vertical") || key == "axis-1" || key == "axis-3" || key.contains("dpad_up") || key.contains("dpad_down") || key.contains("hat_y")) {
+    // 1. D-Pad Direct Press
+    if (key == "dpadup") {
+      targetCmd = value > 0.5 ? "adelante" : "detener";
+    } else if (key == "dpaddown") {
+      targetCmd = value > 0.5 ? "atras" : "detener";
+    } else if (key == "dpadleft") {
+      targetCmd = value > 0.5 ? "izquierda" : "detener";
+    } else if (key == "dpadright") {
+      targetCmd = value > 0.5 ? "derecha" : "detener";
+    }
+    // 2. Analog Sticks (leftthumbsticky / leftthumbstickx / axis-1 / axis-0)
+    else if (key == "leftthumbsticky" || key.contains("vertical") || key == "axis-1" || key == "axis-3") {
       if (value < -0.25) {
         targetCmd = "adelante";
       } else if (value > 0.25) {
@@ -66,9 +76,7 @@ class _ControlScreenState extends State<ControlScreen> {
       } else {
         targetCmd = "detener";
       }
-    }
-    // Axis 0 / X-axis / Horizontal Stick / D-Pad Left/Right
-    else if (key.contains("x") || key.contains("horizontal") || key == "axis-0" || key == "axis-2" || key.contains("dpad_left") || key.contains("dpad_right") || key.contains("hat_x")) {
+    } else if (key == "leftthumbstickx" || key.contains("horizontal") || key == "axis-0" || key == "axis-2") {
       if (value < -0.25) {
         targetCmd = "izquierda";
       } else if (value > 0.25) {
@@ -77,17 +85,17 @@ class _ControlScreenState extends State<ControlScreen> {
         targetCmd = "detener";
       }
     }
-    // Buttons (A, B, X, Y or button-0, button-1, button-2, button-3)
+    // 3. ABXY Buttons (key=a, key=b, key=x, key=y)
     else if (value > 0.5) {
-      if (key == "button-0" || key.contains("a") || key.contains("south")) {
+      if (key == "a" || key == "button-0" || key.contains("south")) {
         targetCmd = "adelante";
-      } else if (key == "button-1" || key.contains("b") || key.contains("east")) {
+      } else if (key == "b" || key == "button-1" || key.contains("east")) {
         targetCmd = "atras";
-      } else if (key == "button-2" || key.contains("x") || key.contains("west")) {
+      } else if (key == "x" || key == "button-2" || key.contains("west")) {
         targetCmd = "izquierda";
-      } else if (key == "button-3" || key.contains("y") || key.contains("north")) {
+      } else if (key == "y" || key == "button-3" || key.contains("north")) {
         targetCmd = "derecha";
-      } else if (key.contains("stop") || key.contains("brake") || key.contains("trigger")) {
+      } else if (key.contains("trigger") || key.contains("shoulder")) {
         targetCmd = "detener";
       }
     }
