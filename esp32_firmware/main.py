@@ -4,7 +4,7 @@ import time
 import gc
 
 # ==================================
-# PINES DEL DRIVER L298N / ESP32
+# PINES DEL DRIVER L298N
 # ==================================
 
 IN1 = Pin(13, Pin.OUT)
@@ -13,7 +13,7 @@ IN3 = Pin(14, Pin.OUT)
 IN4 = Pin(27, Pin.OUT)
 
 # ==================================
-# CONTROL DE MOTORES
+# MOVIMIENTO DE MOTORES
 # ==================================
 
 def detener():
@@ -23,34 +23,37 @@ def detener():
     IN4.off()
 
 def adelante():
+    print(">>> ADELANTE")
     IN1.on()
     IN2.off()
     IN3.on()
     IN4.off()
 
 def atras():
+    print(">>> ATRAS")
     IN1.off()
     IN2.on()
     IN3.off()
     IN4.on()
 
 def izquierda():
+    print(">>> IZQUIERDA")
     IN1.off()
     IN2.on()
     IN3.on()
     IN4.off()
 
 def derecha():
+    print(">>> DERECHA")
     IN1.on()
     IN2.off()
     IN3.off()
     IN4.on()
 
-# Estado inicial: Motores apagados
 detener()
 
 # ==================================
-# BLUETOOTH BLE CONFIGURACIÓN
+# CONFIGURACIÓN BLE
 # ==================================
 
 _IRQ_CENTRAL_CONNECT = 1
@@ -77,6 +80,10 @@ SERVICE = (
 
 DEVICE_NAME = "TANQUE-ESP32"
 
+# ==================================
+# ADVERTISING (PUBLICIDAD BLE CON RESPUESTA UUID)
+# ==================================
+
 def advertising_payload(name="TANQUE-ESP32"):
     payload = bytearray()
     payload += bytes([0x02, 0x01, 0x06])
@@ -92,16 +99,21 @@ def resp_payload(services=None):
             payload += bytes([len(b) + 1, 0x07]) + b
     return payload
 
-def iniciar_advertising():
+def start_advertising():
     try:
         adv = advertising_payload(DEVICE_NAME)
         resp = resp_payload([SERVICE_UUID])
         ble.gap_advertise(100000, adv_data=adv, resp_data=resp, connectable=True)
-        print("✅ Publicando BLE activo con UUID como:", DEVICE_NAME)
+        print("================================")
+        print("BLE PUBLICANDO ACTIVO CON UUID")
+        print("NOMBRE:", DEVICE_NAME)
+        print("SERVICE:", SERVICE_UUID)
+        print("CHAR:", CHAR_UUID)
+        print("================================")
     except Exception as e:
-        print("❌ Error al iniciar advertising BLE:", e)
+        print("Error en start_advertising:", e)
 
-iniciar_advertising()
+start_advertising()
 
 # ==================================
 # PROCESAMIENTO DE COMANDOS
@@ -111,7 +123,7 @@ def ejecutar_comando(cmd):
     if not cmd:
         return
     cmd = cmd.strip().lower()
-    print("▶ COMANDO RECIBIDO:", cmd)
+    print("COMANDO RECIBIDO:", cmd)
 
     if cmd == "adelante":
         adelante()
@@ -124,6 +136,7 @@ def ejecutar_comando(cmd):
     elif cmd == "detener":
         detener()
     else:
+        print("COMANDO DESCONOCIDO")
         detener()
 
 # ==================================
@@ -132,37 +145,44 @@ def ejecutar_comando(cmd):
 
 def ble_irq(event, data):
     if event == _IRQ_CENTRAL_CONNECT:
-        conn_handle, addr_type, addr = data
-        print("📡 Dispositivo conectado exitosamente")
+        print("================================")
+        print("DISPOSITIVO CONECTADO")
+        print("================================")
 
     elif event == _IRQ_CENTRAL_DISCONNECT:
-        conn_handle, addr_type, addr = data
-        print("🔌 Dispositivo desconectado -> Deteniendo motores")
+        print("================================")
+        print("DISPOSITIVO DESCONECTADO -> Deteniendo motores")
+        print("================================")
         detener()
-        iniciar_advertising()
+        start_advertising()
 
     elif event == _IRQ_GATTS_WRITE:
+        print("================================")
+        print("WRITE DETECTADO")
+        print("================================")
         conn_handle, value_handle = data
         try:
             raw = ble.gatts_read(value_handle)
+            print("RAW:", raw)
             if raw:
-                mensaje = raw.decode('utf-8').strip()
+                mensaje = raw.decode("utf-8").strip()
+                print("MENSAJE:", mensaje)
                 ejecutar_comando(mensaje)
         except Exception as e:
-            print("ERROR BLE AL LEER:", e)
+            print("ERROR BLE:", e)
             detener()
 
 ble.irq(ble_irq)
 
 # ==================================
-# BUCLE PRINCIPAL CON LIMPIEZA RAM
+# MAIN LOOP CON LIMPIEZA DE MEMORIA RAM
 # ==================================
 
 print("================================")
-print("ROBOT TEC EXPLORER BLE LISTO")
-print("Nombre BLE:", DEVICE_NAME)
+print("ROBOT TEC EXPLORER")
+print("SISTEMA LISTO Y ESTABLE")
 print("================================")
 
 while True:
-    gc.collect()  # Liberar memoria RAM de MicroPython automáticamente
+    gc.collect()  # Liberación de memoria RAM automática para evitar desconexiones por timeout
     time.sleep_ms(100)
